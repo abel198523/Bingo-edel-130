@@ -25,6 +25,7 @@ async function checkRegistrationAndProceed() {
             initializeWebSocket();
             initializeLandingScreen();
             initializeFooterNavigation();
+            checkAdminStatus();
         } else {
             showRegistrationRequired();
         }
@@ -1103,9 +1104,3 @@ window.adminApproveDeposit = adminApproveDeposit;
 window.adminRejectDeposit = adminRejectDeposit;
 window.adminApproveWithdrawal = adminApproveWithdrawal;
 window.adminRejectWithdrawal = adminRejectWithdrawal;
-
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        checkAdminStatus();
-    }, 1000);
-});
