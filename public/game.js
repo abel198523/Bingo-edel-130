@@ -80,18 +80,20 @@ function initializeFooterNavigation() {
         btn.addEventListener('click', function() {
             const target = this.dataset.target;
             
-            footerButtons.forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.footer-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             
             const landingScreen = document.getElementById('landing-screen');
             const selectionScreen = document.getElementById('selection-screen');
             const profileScreen = document.getElementById('profile-screen');
             const gameScreen = document.getElementById('game-screen');
+            const adminScreen = document.getElementById('admin-screen');
             
             if (landingScreen) landingScreen.style.display = 'none';
             if (selectionScreen) selectionScreen.style.display = 'none';
             if (profileScreen) profileScreen.style.display = 'none';
             if (gameScreen) gameScreen.style.display = 'none';
+            if (adminScreen) adminScreen.style.display = 'none';
             
             if (target === 'game') {
                 if (landingScreen) landingScreen.style.display = 'flex';
@@ -100,6 +102,9 @@ function initializeFooterNavigation() {
             } else if (target === 'profile') {
                 if (profileScreen) profileScreen.style.display = 'flex';
                 loadProfile();
+            } else if (target === 'admin') {
+                if (adminScreen) adminScreen.style.display = 'flex';
+                loadAdminData();
             }
         });
     });
@@ -811,3 +816,296 @@ window.currentStake = currentStake;
 window.handleCardConfirmation = handleCardConfirmation;
 window.refreshBalance = refreshBalance;
 window.claimBingo = claimBingo;
+
+// ================================================
+// Admin Panel Functions
+// ================================================
+
+let isAdmin = false;
+
+async function checkAdminStatus() {
+    if (!currentUserId) return false;
+    
+    try {
+        const response = await fetch(`/api/check-admin/${currentUserId}`);
+        const data = await response.json();
+        isAdmin = data.isAdmin;
+        
+        if (isAdmin) {
+            showAdminTab();
+            initializeAdminPanel();
+        }
+        
+        return isAdmin;
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+        return false;
+    }
+}
+
+function showAdminTab() {
+    const footers = document.querySelectorAll('.selection-footer');
+    footers.forEach(footer => {
+        if (!footer.querySelector('[data-target="admin"]')) {
+            const adminBtn = document.createElement('div');
+            adminBtn.className = 'footer-btn';
+            adminBtn.dataset.target = 'admin';
+            adminBtn.textContent = 'Admin';
+            footer.appendChild(adminBtn);
+            
+            adminBtn.addEventListener('click', function() {
+                document.querySelectorAll('.footer-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                showAdminScreen();
+            });
+        }
+    });
+}
+
+function showAdminScreen() {
+    const landingScreen = document.getElementById('landing-screen');
+    const selectionScreen = document.getElementById('selection-screen');
+    const profileScreen = document.getElementById('profile-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const adminScreen = document.getElementById('admin-screen');
+    
+    if (landingScreen) landingScreen.style.display = 'none';
+    if (selectionScreen) selectionScreen.style.display = 'none';
+    if (profileScreen) profileScreen.style.display = 'none';
+    if (gameScreen) gameScreen.style.display = 'none';
+    if (adminScreen) adminScreen.style.display = 'flex';
+    
+    loadAdminData();
+}
+
+function initializeAdminPanel() {
+    const adminTabs = document.querySelectorAll('.admin-tab');
+    adminTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            
+            adminTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`admin-${tabName}-content`).classList.add('active');
+        });
+    });
+    
+    const refreshBtn = document.getElementById('admin-refresh-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadAdminData);
+    }
+}
+
+async function loadAdminData() {
+    try {
+        const statsResponse = await fetch('/api/admin/stats');
+        const stats = await statsResponse.json();
+        
+        document.getElementById('admin-total-users').textContent = stats.totalUsers || 0;
+        document.getElementById('admin-pending-deposits').textContent = stats.pendingDeposits || 0;
+        document.getElementById('admin-pending-withdrawals').textContent = stats.pendingWithdrawals || 0;
+        document.getElementById('admin-today-games').textContent = stats.todayGames || 0;
+    } catch (err) {
+        console.error('Failed to load admin stats:', err);
+    }
+    
+    loadAdminDeposits();
+    loadAdminWithdrawals();
+    loadAdminUsers();
+}
+
+async function loadAdminDeposits() {
+    try {
+        const response = await fetch('/api/admin/deposits');
+        const deposits = await response.json();
+        
+        const container = document.getElementById('admin-deposits-list');
+        
+        if (deposits.length === 0) {
+            container.innerHTML = '<p class="admin-empty">ዲፖዚቶች የሉም</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const d of deposits) {
+            html += `
+                <div class="admin-item">
+                    <div class="admin-item-header">
+                        <span class="admin-item-id">#${d.id}</span>
+                        <span class="admin-item-status ${d.status}">${d.status}</span>
+                    </div>
+                    <div class="admin-item-details">
+                        <p><strong>${d.username}</strong> - ${d.amount} ብር</p>
+                        <p>${d.payment_method} | ኮድ: ${d.confirmation_code}</p>
+                    </div>
+                    ${d.status === 'pending' ? `
+                        <div class="admin-item-actions">
+                            <button class="admin-btn admin-btn-approve" onclick="adminApproveDeposit(${d.id})">✓ ፈቅድ</button>
+                            <button class="admin-btn admin-btn-reject" onclick="adminRejectDeposit(${d.id})">✗ ውድቅ</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    } catch (err) {
+        document.getElementById('admin-deposits-list').innerHTML = '<p class="admin-empty">Error loading</p>';
+    }
+}
+
+async function loadAdminWithdrawals() {
+    try {
+        const response = await fetch('/api/admin/withdrawals');
+        const withdrawals = await response.json();
+        
+        const container = document.getElementById('admin-withdrawals-list');
+        
+        if (withdrawals.length === 0) {
+            container.innerHTML = '<p class="admin-empty">ማውጣቶች የሉም</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const w of withdrawals) {
+            html += `
+                <div class="admin-item">
+                    <div class="admin-item-header">
+                        <span class="admin-item-id">#${w.id}</span>
+                        <span class="admin-item-status ${w.status}">${w.status}</span>
+                    </div>
+                    <div class="admin-item-details">
+                        <p><strong>${w.username}</strong> - ${w.amount} ብር</p>
+                        <p>📞 ${w.phone_number} | 🏷 ${w.account_name}</p>
+                    </div>
+                    ${w.status === 'pending' ? `
+                        <div class="admin-item-actions">
+                            <button class="admin-btn admin-btn-approve" onclick="adminApproveWithdrawal(${w.id})">✓ ፈቅድ</button>
+                            <button class="admin-btn admin-btn-reject" onclick="adminRejectWithdrawal(${w.id})">✗ ውድቅ</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    } catch (err) {
+        document.getElementById('admin-withdrawals-list').innerHTML = '<p class="admin-empty">Error loading</p>';
+    }
+}
+
+async function loadAdminUsers() {
+    try {
+        const response = await fetch('/api/admin/users');
+        const users = await response.json();
+        
+        const container = document.getElementById('admin-users-list');
+        
+        if (users.length === 0) {
+            container.innerHTML = '<p class="admin-empty">ተጠቃሚዎች የሉም</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const u of users) {
+            html += `
+                <div class="admin-user-item">
+                    <div class="admin-user-info">
+                        <div class="admin-user-name">${u.username}</div>
+                        <div class="admin-user-phone">${u.phone_number || '-'}</div>
+                    </div>
+                    <div class="admin-user-balance">${parseFloat(u.balance || 0).toFixed(2)} ብር</div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    } catch (err) {
+        document.getElementById('admin-users-list').innerHTML = '<p class="admin-empty">Error loading</p>';
+    }
+}
+
+async function adminApproveDeposit(id) {
+    if (!confirm('ይህን ዲፖዚት ለማፅደቅ እርግጠኛ ነዎት?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
+        if (response.ok) {
+            showAdminNotification('✅ ዲፖዚት ተፈቅዷል!');
+            loadAdminData();
+        } else {
+            alert('Error approving deposit');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function adminRejectDeposit(id) {
+    if (!confirm('ይህን ዲፖዚት ውድቅ ለማድረግ እርግጠኛ ነዎት?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
+        if (response.ok) {
+            showAdminNotification('❌ ዲፖዚት ውድቅ ተደርጓል');
+            loadAdminData();
+        } else {
+            alert('Error rejecting deposit');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function adminApproveWithdrawal(id) {
+    if (!confirm('ይህን ማውጣት ለማፅደቅ እርግጠኛ ነዎት?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
+        if (response.ok) {
+            showAdminNotification('✅ ማውጣት ተፈቅዷል!');
+            loadAdminData();
+        } else {
+            alert('Error approving withdrawal');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function adminRejectWithdrawal(id) {
+    if (!confirm('ይህን ማውጣት ውድቅ ለማድረግ እርግጠኛ ነዎት?')) return;
+    
+    try {
+        const response = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
+        if (response.ok) {
+            showAdminNotification('❌ ማውጣት ውድቅ ተደርጓል');
+            loadAdminData();
+        } else {
+            alert('Error rejecting withdrawal');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+function showAdminNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'admin-notification';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+window.adminApproveDeposit = adminApproveDeposit;
+window.adminRejectDeposit = adminRejectDeposit;
+window.adminApproveWithdrawal = adminApproveWithdrawal;
+window.adminRejectWithdrawal = adminRejectWithdrawal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        checkAdminStatus();
+    }, 1000);
+});

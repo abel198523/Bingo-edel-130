@@ -109,6 +109,76 @@
             </div>
         </div>
 
+        <!-- Admin Screen -->
+        <div id="admin-screen" style="display: none;">
+            <div class="admin-container">
+                <div class="admin-header">
+                    <h2>🎯 Admin Panel</h2>
+                </div>
+                
+                <div class="admin-stats-grid" id="admin-stats">
+                    <div class="admin-stat-card">
+                        <span class="admin-stat-label">ተጠቃሚዎች</span>
+                        <span class="admin-stat-value" id="admin-total-users">0</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span class="admin-stat-label">ዲፖዚቶች</span>
+                        <span class="admin-stat-value" id="admin-pending-deposits">0</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span class="admin-stat-label">ማውጣቶች</span>
+                        <span class="admin-stat-value" id="admin-pending-withdrawals">0</span>
+                    </div>
+                    <div class="admin-stat-card">
+                        <span class="admin-stat-label">ጨዋታዎች</span>
+                        <span class="admin-stat-value" id="admin-today-games">0</span>
+                    </div>
+                </div>
+                
+                <div class="admin-tabs">
+                    <button class="admin-tab active" data-tab="deposits">💳 ዲፖዚቶች</button>
+                    <button class="admin-tab" data-tab="withdrawals">💸 ማውጣቶች</button>
+                    <button class="admin-tab" data-tab="users">👥 ተጠቃሚዎች</button>
+                </div>
+                
+                <div class="admin-tab-content active" id="admin-deposits-content">
+                    <div class="admin-section">
+                        <h3>💳 ዲፖዚቶች</h3>
+                        <div id="admin-deposits-list" class="admin-list">
+                            <p class="admin-empty">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-tab-content" id="admin-withdrawals-content">
+                    <div class="admin-section">
+                        <h3>💸 ማውጣቶች</h3>
+                        <div id="admin-withdrawals-list" class="admin-list">
+                            <p class="admin-empty">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="admin-tab-content" id="admin-users-content">
+                    <div class="admin-section">
+                        <h3>👥 ተጠቃሚዎች</h3>
+                        <div id="admin-users-list" class="admin-list">
+                            <p class="admin-empty">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="admin-refresh-btn" id="admin-refresh-btn">🔄 ዳግም ጫን</button>
+            </div>
+            
+            <div class="selection-footer">
+                <div class="footer-btn" data-target="game">Game</div>
+                <div class="footer-btn" data-target="wallet">Wallet</div>
+                <div class="footer-btn" data-target="profile">Profile</div>
+                <div class="footer-btn active" data-target="admin">Admin</div>
+            </div>
+        </div>
+
         <div id="profile-screen" style="display: none;">
             <div class="profile-container">
                 <div class="profile-header">

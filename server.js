@@ -1489,6 +1489,25 @@ app.get('/api/check-registration/:telegramId', async (req, res) => {
     }
 });
 
+app.get('/api/check-admin/:telegramId', async (req, res) => {
+    try {
+        const { telegramId } = req.params;
+        const tgId = telegramId.toString();
+        
+        const result = await pool.query(
+            'SELECT * FROM admin_users WHERE telegram_id = $1 AND is_active = true',
+            [tgId]
+        );
+
+        const isEnvAdmin = ADMIN_CHAT_ID && tgId === ADMIN_CHAT_ID.toString();
+
+        res.json({ isAdmin: result.rows.length > 0 || isEnvAdmin });
+    } catch (err) {
+        console.error('Check admin error:', err);
+        res.json({ isAdmin: false });
+    }
+});
+
 app.get('/api/profile/:telegramId', async (req, res) => {
     try {
         const { telegramId } = req.params;
