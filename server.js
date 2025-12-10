@@ -32,21 +32,103 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RENDER_SERVER_URL = process.env.RENDER_SERVER_URL;
 const MINI_APP_URL = process.env.MINI_APP_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
 
-// Always use polling mode for development
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
-    polling: true
-});
+let bot = null;
 
-bot.getMe().then((botInfo) => {
-    console.log("Bot running in Polling mode.");
-    console.log("Bot username:", botInfo.username);
-    console.log("Bot ID:", botInfo.id);
-    if (MINI_APP_URL) {
-        console.log(`Mini App URL: ${MINI_APP_URL}`);
+if (TELEGRAM_BOT_TOKEN) {
+    bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
+        polling: true
+    });
+
+    bot.getMe().then((botInfo) => {
+        console.log("Bot running in Polling mode.");
+        console.log("Bot username:", botInfo.username);
+        console.log("Bot ID:", botInfo.id);
+        if (MINI_APP_URL) {
+            console.log(`Mini App URL: ${MINI_APP_URL}`);
+        }
+    }).catch((err) => {
+        console.error("Failed to get bot info:", err.message);
+    });
+} else {
+    console.log("TELEGRAM_BOT_TOKEN not provided - Bot functionality disabled");
+    console.log("Set TELEGRAM_BOT_TOKEN environment variable to enable the bot");
+}
+
+// User conversation state tracking
+const userStates = new Map();
+
+// Admin Telegram IDs - Add admin IDs here
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+
+// Helper function to get main keyboard
+function getMainKeyboard(telegramId) {
+    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    return {
+        keyboard: [
+            [{ text: "📱 Register", request_contact: true }],
+            [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
+            [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
+            [{ text: "💸 Withdraw" }]
+        ],
+        resize_keyboard: true
+    };
+}
+
+// Helper to notify admin
+async function notifyAdmin(message) {
+    if (ADMIN_CHAT_ID && bot) {
+        try {
+            await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
+        } catch (err) {
+            console.error('Failed to notify admin:', err.message);
+        }
     }
-}).catch((err) => {
-    console.error("Failed to get bot info:", err.message);
-});
+}
+
+// Helper to check withdrawal eligibility
+async function checkWithdrawEligibility(telegramId) {
+    try {
+        const userResult = await pool.query(
+            'SELECT u.id FROM users u WHERE u.telegram_id = $1',
+            [telegramId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return { eligible: false, reason: 'not_registered' };
+        }
+        
+        const userId = userResult.rows[0].id;
+        
+        const depositCount = await pool.query(
+            'SELECT COUNT(*) as count FROM deposits WHERE user_id = $1 AND status = $2',
+            [userId, 'confirmed']
+        );
+        
+        const winCount = await pool.query(
+            'SELECT COUNT(*) as count FROM game_participants WHERE user_id = $1 AND is_winner = true',
+            [userId]
+        );
+        
+        const deposits = parseInt(depositCount.rows[0].count);
+        const wins = parseInt(winCount.rows[0].count);
+        
+        if (deposits < 1) {
+            return { eligible: false, reason: 'no_deposit', deposits, wins };
+        }
+        
+        if (wins < 2) {
+            return { eligible: false, reason: 'not_enough_wins', deposits, wins };
+        }
+        
+        return { eligible: true, deposits, wins, userId };
+    } catch (error) {
+        console.error('Eligibility check error:', error);
+        return { eligible: false, reason: 'error' };
+    }
+}
+
+// Only setup bot handlers if bot is available
+if (bot) {
 
 // Handle the /start command
 bot.onText(/\/start/, async (msg) => {
@@ -174,79 +256,6 @@ bot.onText(/💰 Check Balance/, async (msg) => {
         bot.sendMessage(chatId, "ይቅርታ፣ ሒሳብዎን ማግኘት አልተቻለም።");
     }
 });
-
-// User conversation state tracking
-const userStates = new Map();
-
-// Admin Telegram IDs - Add admin IDs here
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
-
-// Helper function to get main keyboard
-function getMainKeyboard(telegramId) {
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
-    return {
-        keyboard: [
-            [{ text: "📱 Register", request_contact: true }],
-            [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
-            [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
-            [{ text: "💸 Withdraw" }]
-        ],
-        resize_keyboard: true
-    };
-}
-
-// Helper to notify admin
-async function notifyAdmin(message) {
-    if (ADMIN_CHAT_ID) {
-        try {
-            await bot.sendMessage(ADMIN_CHAT_ID, message, { parse_mode: 'HTML' });
-        } catch (err) {
-            console.error('Failed to notify admin:', err.message);
-        }
-    }
-}
-
-// Helper to check withdrawal eligibility
-async function checkWithdrawEligibility(telegramId) {
-    try {
-        const userResult = await pool.query(
-            'SELECT u.id FROM users u WHERE u.telegram_id = $1',
-            [telegramId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            return { eligible: false, reason: 'not_registered' };
-        }
-        
-        const userId = userResult.rows[0].id;
-        
-        const depositCount = await pool.query(
-            'SELECT COUNT(*) as count FROM deposits WHERE user_id = $1 AND status = $2',
-            [userId, 'confirmed']
-        );
-        
-        const winCount = await pool.query(
-            'SELECT COUNT(*) as count FROM game_participants WHERE user_id = $1 AND is_winner = true',
-            [userId]
-        );
-        
-        const deposits = parseInt(depositCount.rows[0].count);
-        const wins = parseInt(winCount.rows[0].count);
-        
-        if (deposits < 1) {
-            return { eligible: false, reason: 'no_deposit', deposits, wins };
-        }
-        
-        if (wins < 2) {
-            return { eligible: false, reason: 'not_enough_wins', deposits, wins };
-        }
-        
-        return { eligible: true, deposits, wins, userId };
-    } catch (error) {
-        console.error('Eligibility check error:', error);
-        return { eligible: false, reason: 'error' };
-    }
-}
 
 // Handle Withdraw button
 bot.onText(/💸 Withdraw/, async (msg) => {
@@ -831,6 +840,8 @@ bot.on('polling_error', (error) => {
 bot.on('error', (error) => {
     console.error("Bot error:", error.message);
 });
+
+} // End of if (bot) block
 
 // --- End of Telegram Bot Logic ---
 
