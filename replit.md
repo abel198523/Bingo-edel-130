@@ -56,7 +56,20 @@ Chewatabingo is a real-time Bingo game built as a Telegram Mini App with integra
 - `ADMIN_CHAT_ID` - Admin Telegram chat ID for notifications (optional)
 
 ## Admin Panel
-Access at `/admin.html` - Manage deposits, withdrawals, users, and transactions.
+
+### Integrated Admin (In-App)
+The admin panel is now integrated directly into the mini app. Admin users will see an "Admin" tab in the footer navigation after logging in. The admin panel includes:
+- **Stats Dashboard**: Total users, pending deposits, pending withdrawals, today's games
+- **Deposits Tab**: View and approve/reject deposit requests
+- **Withdrawals Tab**: View and approve/reject withdrawal requests  
+- **Users Tab**: View all registered users with balances
+
+Admin status is determined by:
+1. Being listed in the `admin_users` database table with `is_active = true`
+2. OR having the same Telegram ID as `ADMIN_CHAT_ID` environment variable
+
+### Standalone Admin (Legacy)
+Access at `/admin.html` - Standalone admin panel for transaction management.
 
 ## Withdrawal Eligibility
 To withdraw, players must:
