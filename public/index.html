@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chewatabingo Mini App</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+    <div class="main-wrapper">
+        
+        <div id="landing-screen">
+            <div class="welcome-box">
+                <h1>እንኳን ደህና መጡ</h1>
+                <h2>ወደ ችዋታቢንጎ</h2>
+                
+                <div class="stake-selection">
+                    <p>የውርርድ መጠን ይምረጡ</p>
+                    <button class="stake-btn active-stake" data-stake="10">Stake 10</button>
+                    <button class="stake-btn" data-stake="20">Stake 20</button>
+                    <button class="stake-btn" data-stake="50">Stake 50</button>
+                </div>
+
+                <button id="start-selection-btn" class="play-btn">
+                    ▷ Play 10 ETB
+                </button>
+            </div>
+        </div>
+
+        <div id="auth-screen" class="auth-screen" style="display: none;">
+            <div class="auth-modal">
+                <button id="close-auth" class="close-auth-btn">&times;</button>
+                
+                <div id="login-form" class="auth-form">
+                    <h2>Login</h2>
+                    <input type="text" id="login-username" placeholder="Username" class="auth-input">
+                    <input type="password" id="login-password" placeholder="Password" class="auth-input">
+                    <button id="login-btn" class="auth-btn">Login</button>
+                    <p class="auth-switch">Don't have an account? <a href="#" id="show-register">Register</a></p>
+                </div>
+                
+                <div id="register-form" class="auth-form" style="display: none;">
+                    <h2>Register</h2>
+                    <input type="text" id="register-username" placeholder="Username" class="auth-input">
+                    <input type="password" id="register-password" placeholder="Password" class="auth-input">
+                    <input type="password" id="register-confirm-password" placeholder="Confirm Password" class="auth-input">
+                    <button id="register-btn" class="auth-btn">Register</button>
+                    <p class="auth-switch">Already have an account? <a href="#" id="show-login">Login</a></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="selection-screen" style="display: none;">
+            
+            <div class="selection-header">
+                <div class="header-info">
+                    <span class="label">Main Wallet</span>
+                    <span class="value" id="main-wallet-value">0</span>
+                </div>
+                <div class="header-info">
+                    <span class="label">Stake</span>
+                    <span class="value" id="current-stake">10</span>
+                </div>
+                <div class="header-info time-counter">
+                    <span class="time-value" id="time-left">45s</span>
+                </div>
+            </div>
+
+            <p class="selection-instruction">ካርድ ቁጥር ይምረጡ (1-100)</p>
+
+            <div id="card-selection-grid" class="card-selection-grid">
+            </div>
+            
+            <div id="confirmation-status" class="confirmation-status">ካርድ ይምረጡና አረጋግጡ</div>
+            
+            <button id="confirm-card-btn" class="selection-action-btn" disabled>
+                ካርዱን አረጋግጥ
+            </button>
+            
+            <p style="text-align: center; font-size: 0.8em; color: #ccc; margin-top: 10px;">ካርድዎን ለመምረጥ ጊዜው እየሮጠ ነው!</p>
+
+            <div class="selection-footer">
+                <div class="footer-btn active" data-target="game">Game</div>
+                <div class="footer-btn" data-target="wallet">Wallet</div>
+                <div class="footer-btn" data-target="profile">Profile</div>
+            </div>
+            
+        </div>
+
+        <div id="card-preview-modal" class="card-preview-modal" style="display: none;">
+            <div class="preview-modal-content">
+                <h2 id="preview-card-title" class="preview-title">ካርድ #1</h2>
+                
+                <div class="preview-bingo-headers">
+                    <div class="preview-header-circle b-header">B</div>
+                    <div class="preview-header-circle i-header">I</div>
+                    <div class="preview-header-circle n-header">N</div>
+                    <div class="preview-header-circle g-header">G</div>
+                    <div class="preview-header-circle o-header">O</div>
+                </div>
+                
+                <div id="preview-card-grid" class="preview-card-grid">
+                </div>
+                
+                <div class="preview-buttons">
+                    <button id="preview-back-btn" class="preview-btn back-btn">ተመለስ</button>
+                    <button id="preview-confirm-btn" class="preview-btn confirm-btn">ኮንፈርም</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="profile-screen" style="display: none;">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <h2>ፕሮፋይል</h2>
+                </div>
+                
+                <div class="profile-avatar">
+                    <div class="avatar-circle">
+                        <span id="profile-avatar-letter">?</span>
+                    </div>
+                </div>
+                
+                <div class="profile-info">
+                    <div class="profile-item">
+                        <span class="profile-label">ስም</span>
+                        <span class="profile-value" id="profile-username">---</span>
+                    </div>
+                    <div class="profile-item">
+                        <span class="profile-label">Telegram ID</span>
+                        <span class="profile-value" id="profile-telegram-id">---</span>
+                    </div>
+                    <div class="profile-item">
+                        <span class="profile-label">ስልክ ቁጥር</span>
+                        <span class="profile-value" id="profile-phone">---</span>
+                    </div>
+                    <div class="profile-item">
+                        <span class="profile-label">ቀሪ ሒሳብ</span>
+                        <span class="profile-value" id="profile-balance">0.00 ETB</span>
+                    </div>
+                    <div class="profile-item">
+                        <span class="profile-label">አጠቃላይ ጨዋታዎች</span>
+                        <span class="profile-value" id="profile-total-games">0</span>
+                    </div>
+                    <div class="profile-item">
+                        <span class="profile-label">አሸናፊ ጨዋታዎች</span>
+                        <span class="profile-value" id="profile-wins">0</span>
+                    </div>
+                </div>
+                
+                <div class="profile-actions">
+                    <button class="profile-btn" id="profile-refresh-btn">ዳግም ጫን</button>
+                </div>
+            </div>
+            
+            <div class="selection-footer">
+                <div class="footer-btn" data-target="game">Game</div>
+                <div class="footer-btn" data-target="wallet">Wallet</div>
+                <div class="footer-btn active" data-target="profile">Profile</div>
+            </div>
+        </div>
+
+        <div id="game-screen" style="display: none;">
+            
+            <div class="game-header">
+                <span class="close-btn">&times;</span>
+                <span class="game-title">Chewatabingo</span>
+                <span class="header-icons">
+                    <span class="dropdown-icon">&#8964;</span>
+                    <span class="menu-icon">&#8942;</span>
+                </span>
+            </div>
+
+            <div class="game-content-grid">
+                
+                <div class="left-column">
+                    <div class="master-grid-section">
+                        <div class="bingo-headers">
+                            <div class="bingo-header-circle b-header">B</div>
+                            <div class="bingo-header-circle i-header">I</div>
+                            <div class="bingo-header-circle n-header">N</div>
+                            <div class="bingo-header-circle g-header">G</div>
+                            <div class="bingo-header-circle o-header">O</div>
+                        </div>
+                        <div id="master-grid" class="master-grid">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-column">
+                    
+                    <div class="call-display-section">
+                        <div class="current-call-circle" id="current-call">
+                            <span class="call-letter" id="call-letter"></span>
+                            <span class="call-number" id="call-number">--</span>
+                        </div>
+                    </div>
+                    
+                    <div class="call-history" id="call-history">
+                    </div>
+
+                    <div class="player-card-section">
+                        <div class="your-cards-header">
+                            <span>Your Cards</span>
+                            <span class="card-count">1</span>
+                        </div>
+                        
+                        <div id="watch-only-placard" class="watch-only-placard">
+                            WATCH ONLY
+                        </div>
+                        
+                        <div class="player-card-wrapper">
+                            <div class="card-number-title" id="card-number-title">Card Number --</div>
+                            <div class="player-bingo-headers">
+                                <div class="player-header-circle b-header">B</div>
+                                <div class="player-header-circle i-header">I</div>
+                                <div class="player-header-circle n-header">N</div>
+                                <div class="player-header-circle g-header">G</div>
+                                <div class="player-header-circle o-header">O</div>
+                            </div>
+                            <div id="player-bingo-card" class="bingo-card-player">
+                            </div>
+                        </div>
+                        
+                        <div class="bingo-button-section">
+                            <button class="bingo-main-btn" id="bingo-btn">Bingo</button>
+                            <div class="connection-status">
+                                <span class="status-dot connected"></span>
+                                <span>Connected</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="game-footer">
+                <button class="footer-action-btn exit-btn" id="exit-btn">
+                    <span class="btn-icon">&#8618;</span> Exit
+                </button>
+                <button class="footer-action-btn refresh-btn" id="refresh-btn">
+                    <span class="btn-icon">&#8635;</span> Refresh
+                </button>
+            </div>
+            
+        </div>
+        
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="card.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
