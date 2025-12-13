@@ -129,7 +129,7 @@ function getMainKeyboard(telegramId) {
         keyboard.push([{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }]);
     }
     
-    keyboard.push([{ text: "💰 Check Balance" }]);
+    keyboard.push([{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]);
     
     return {
         keyboard: keyboard,
@@ -295,7 +295,8 @@ bot.on('contact', async (msg) => {
         
         console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
         
-        bot.sendMessage(chatId, `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`, {
+        const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+        bot.sendMessage(chatId, `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`, {
             reply_markup: getMainKeyboard(telegramId)
         });
         
@@ -325,6 +326,36 @@ bot.onText(/💰 Check Balance/, async (msg) => {
     } catch (error) {
         console.error('Balance check error:', error);
         bot.sendMessage(chatId, "ይቅርታ፣ ሒሳብዎን ማግኘት አልተቻለም።");
+    }
+});
+
+// Handle Referral button
+bot.onText(/🔗 ሪፈራል/, async (msg) => {
+    const chatId = msg.chat.id;
+    const telegramId = msg.from.id;
+    
+    try {
+        const result = await pool.query(
+            'SELECT referral_code FROM users WHERE telegram_id = $1',
+            [telegramId]
+        );
+        
+        if (result.rows.length > 0 && result.rows[0].referral_code) {
+            const referralCode = result.rows[0].referral_code;
+            const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+            
+            await bot.sendMessage(chatId, 
+                `🔗 <b>የእርስዎ ሪፈራል ሊንክ:</b>\n\n${referralLink}\n\n` +
+                `📋 ይህንን ሊንክ ለጓደኞችዎ ያጋሩ!\n` +
+                `🎁 አንድ ጓደኛ ሲመዘገብ 5 ብር ቦነስ ያገኛሉ!`,
+                { parse_mode: 'HTML', reply_markup: getMainKeyboard(telegramId) }
+            );
+        } else {
+            await bot.sendMessage(chatId, "እባክዎ መጀመሪያ ይመዝገቡ። /start ይላኩ።");
+        }
+    } catch (error) {
+        console.error('Referral link error:', error);
+        await bot.sendMessage(chatId, "ይቅርታ፣ ሪፈራል ሊንክ ማግኘት አልተቻለም።");
     }
 });
 
@@ -401,7 +432,8 @@ bot.on('message', async (msg) => {
         msg.text.includes('💰') || msg.text.includes('💸') || 
         msg.text.includes('💳') || msg.text.includes('📱 Telebirr') || 
         msg.text.includes('🏦 CBE Birr') || msg.text.includes('❌') ||
-        msg.text.includes('▶️') || msg.text.includes('📱 Register')) {
+        msg.text.includes('▶️') || msg.text.includes('📱 Register') ||
+        msg.text.includes('🔗 ሪፈራል')) {
         return;
     }
     
