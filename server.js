@@ -576,6 +576,12 @@ bot.onText(/\/approve_deposit (\d+)/, async (msg, match) => {
         
         await pool.query('UPDATE deposits SET status = $1, confirmed_at = NOW() WHERE id = $2', ['confirmed', depositId]);
         
+        // First ensure wallet exists, then update balance
+        await pool.query(
+            'INSERT INTO wallets (user_id, balance) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING',
+            [d.user_id]
+        );
+        
         await pool.query(
             'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2',
             [d.amount, d.user_id]
@@ -1788,6 +1794,12 @@ app.post('/api/admin/deposits/:id/approve', async (req, res) => {
         }
         
         await pool.query('UPDATE deposits SET status = $1, confirmed_at = NOW() WHERE id = $2', ['confirmed', depositId]);
+        
+        // First ensure wallet exists, then update balance
+        await pool.query(
+            'INSERT INTO wallets (user_id, balance) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING',
+            [d.user_id]
+        );
         
         await pool.query(
             'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2',
