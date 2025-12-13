@@ -1580,8 +1580,10 @@ app.get('/api/wallet/:userId', async (req, res) => {
         const { userId } = req.params;
         const telegramId = parseInt(userId) || 0;
         
+        console.log('Wallet API called for telegram_id:', telegramId);
+        
         const result = await pool.query(
-            `SELECT u.id, u.is_registered, w.balance 
+            `SELECT u.id, u.is_registered, COALESCE(w.balance, 0) as balance 
              FROM users u 
              LEFT JOIN wallets w ON u.id = w.user_id 
              WHERE u.telegram_id = $1`,
@@ -1589,6 +1591,7 @@ app.get('/api/wallet/:userId', async (req, res) => {
         );
 
         if (result.rows.length === 0) {
+            console.log('No user found for telegram_id:', telegramId);
             return res.json({ 
                 success: false,
                 balance: 0, 
@@ -1603,6 +1606,8 @@ app.get('/api/wallet/:userId', async (req, res) => {
 
         const user = result.rows[0];
         const internalUserId = user.id;
+        
+        console.log('Wallet user found:', { internalUserId, balance: user.balance, is_registered: user.is_registered });
         
         const gamesResult = await pool.query(
             `SELECT COUNT(*) as total_games FROM game_participants WHERE user_id = $1`,
@@ -1627,9 +1632,12 @@ app.get('/api/wallet/:userId', async (req, res) => {
             LIMIT 20
         `, [internalUserId]);
         
+        const balanceValue = parseFloat(user.balance) || 0;
+        console.log('Returning wallet balance:', balanceValue);
+        
         res.json({ 
             success: true,
-            balance: parseFloat(user.balance) || 0, 
+            balance: balanceValue, 
             is_registered: user.is_registered || false,
             stake: 10,
             totalGames: parseInt(gamesResult.rows[0].total_games) || 0,

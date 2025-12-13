@@ -1222,12 +1222,24 @@ async function loadWalletData() {
     try {
         console.log('Fetching wallet data for user:', currentUserId);
         const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
+        
+        if (!response.ok) {
+            console.error('Wallet API error:', response.status);
+            return;
+        }
+        
         const data = await response.json();
         
-        console.log('Wallet API response:', data);
+        console.log('Wallet API response:', JSON.stringify(data));
         
         // Get balance from response - ensure it's a number
-        const balance = parseFloat(data.balance) || 0;
+        let balance = 0;
+        if (data.balance !== undefined && data.balance !== null) {
+            balance = parseFloat(data.balance);
+            if (isNaN(balance)) balance = 0;
+        }
+        
+        console.log('Parsed balance:', balance);
         
         // Update all wallet displays using the centralized function
         updateWalletDisplay(balance);
