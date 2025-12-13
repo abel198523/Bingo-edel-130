@@ -72,8 +72,7 @@ function getMainKeyboard(telegramId) {
         keyboard.push([{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }]);
     }
     
-    keyboard.push([{ text: "💰 Check Balance" }, { text: "💳 Deposit" }]);
-    keyboard.push([{ text: "💸 Withdraw" }]);
+    keyboard.push([{ text: "💰 Check Balance" }]);
     
     return {
         keyboard: keyboard,
@@ -156,16 +155,8 @@ bot.onText(/\/start/, async (msg) => {
     
     if (isRegistered && miniAppUrlWithId) {
         // User is registered - show full menu
-        bot.sendMessage(chatId, "እንኳን ደህና መጡ! ጨዋታውን ለመጀመር 'Play' የሚለውን ቁልፍ ይጫኑ።", {
-            reply_markup: {
-                keyboard: [
-                    [{ text: "📱 Register", request_contact: true }],
-                    [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
-                    [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
-                    [{ text: "💸 Withdraw" }]
-                ],
-                resize_keyboard: true
-            }
+        bot.sendMessage(chatId, "እንኳን ደህና መጡ! ጨዋታውን ለመጀመር 'Play' የሚለውን ቁልፍ ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+            reply_markup: getMainKeyboard(telegramId)
         });
     } else {
         // User is not registered or no Mini App URL - show Register button
@@ -193,16 +184,8 @@ bot.on('contact', async (msg) => {
         const existingUser = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
         
         if (existingUser.rows.length > 0) {
-            bot.sendMessage(chatId, "እርስዎ ቀድሞ ተመዝግበዋል! 'Play' ን ይጫኑ።", {
-                reply_markup: {
-                    keyboard: [
-                        [{ text: "📱 Register", request_contact: true }],
-                        [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
-                        [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
-                        [{ text: "💸 Withdraw" }]
-                    ],
-                    resize_keyboard: true
-                }
+            bot.sendMessage(chatId, "እርስዎ ቀድሞ ተመዝግበዋል! 'Play' ን ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+                reply_markup: getMainKeyboard(telegramId)
             });
             return;
         }
@@ -223,16 +206,8 @@ bot.on('contact', async (msg) => {
         
         console.log(`New user registered: ${telegramId} - ${phoneNumber}`);
         
-        bot.sendMessage(chatId, "✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\nአሁን 'Play' ን ይጫኑ!", {
-            reply_markup: {
-                keyboard: [
-                    [{ text: "📱 Register", request_contact: true }],
-                    [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
-                    [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
-                    [{ text: "💸 Withdraw" }]
-                ],
-                resize_keyboard: true
-            }
+        bot.sendMessage(chatId, "✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+            reply_markup: getMainKeyboard(telegramId)
         });
         
     } catch (error) {
@@ -264,85 +239,26 @@ bot.onText(/💰 Check Balance/, async (msg) => {
     }
 });
 
-// Handle Withdraw button
+// Handle Withdraw button - redirect to mini-app
 bot.onText(/💸 Withdraw/, async (msg) => {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     
-    const eligibility = await checkWithdrawEligibility(telegramId);
-    
-    if (!eligibility.eligible) {
-        let message = '';
-        if (eligibility.reason === 'not_registered') {
-            message = '❌ እባክዎ መጀመሪያ ይመዝገቡ።';
-        } else if (eligibility.reason === 'no_deposit') {
-            message = `❌ ገንዘብ ለማውጣት ቢያንስ አንድ ጊዜ ዲፖዚት ማድረግ አለብዎ።\n\n📊 የእርስዎ ሁኔታ:\n• ዲፖዚቶች: ${eligibility.deposits || 0}\n• አሸናፊነቶች: ${eligibility.wins || 0}\n\n💡 መስፈርቶች:\n• ቢያንስ 1 ዲፖዚት\n• ቢያንስ 2 አሸናፊነት`;
-        } else if (eligibility.reason === 'not_enough_wins') {
-            message = `❌ ገንዘብ ለማውጣት ቢያንስ 2 ጊዜ ማሸነፍ አለብዎ።\n\n📊 የእርስዎ ሁኔታ:\n• ዲፖዚቶች: ${eligibility.deposits}\n• አሸናፊነቶች: ${eligibility.wins}\n\n💡 መስፈርቶች:\n• ቢያንስ 1 ዲፖዚት\n• ቢያንስ 2 አሸናፊነት`;
-        } else {
-            message = '❌ ይቅርታ፣ ስህተት ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።';
-        }
-        
-        await bot.sendMessage(chatId, message, { reply_markup: getMainKeyboard(telegramId) });
-        return;
-    }
-    
-    userStates.set(telegramId, { 
-        action: 'withdraw', 
-        step: 'amount',
-        userId: eligibility.userId 
-    });
-    
-    const balanceResult = await pool.query(
-        'SELECT w.balance FROM users u JOIN wallets w ON u.id = w.user_id WHERE u.telegram_id = $1',
-        [telegramId]
-    );
-    const balance = parseFloat(balanceResult.rows[0]?.balance || 0).toFixed(2);
-    
     await bot.sendMessage(chatId, 
-        `✅ መስፈርቶቹን አሟልተዋል!\n\n💰 ቀሪ ሒሳብ: ${balance} ብር\n\n💵 ማውጣት የሚፈልጉትን መጠን ያስገቡ:`,
-        { reply_markup: { keyboard: [[{ text: "❌ ሰርዝ" }]], resize_keyboard: true } }
+        "💸 ገንዘብ ለማውጣት 'Play' ቁልፍን ተጭነው 'Wallet' ታብ ውስጥ ይግቡ።\n\nበWallet ታብ ውስጥ ዲፖዚትና ማውጣት በቀላሉ ማድረግ ይችላሉ!",
+        { reply_markup: getMainKeyboard(telegramId) }
     );
 });
 
-// Handle Deposit button
+// Handle Deposit button - redirect to mini-app
 bot.onText(/💳 Deposit/, async (msg) => {
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
     
-    try {
-        const userResult = await pool.query(
-            'SELECT id FROM users WHERE telegram_id = $1',
-            [telegramId]
-        );
-        
-        if (userResult.rows.length === 0) {
-            await bot.sendMessage(chatId, '❌ እባክዎ መጀመሪያ ይመዝገቡ። /start ይላኩ።');
-            return;
-        }
-        
-        userStates.set(telegramId, { 
-            action: 'deposit', 
-            step: 'method',
-            userId: userResult.rows[0].id 
-        });
-        
-        await bot.sendMessage(chatId, 
-            '💳 ዲፖዚት ለማድረግ የክፍያ ዘዴ ይምረጡ:',
-            { 
-                reply_markup: { 
-                    keyboard: [
-                        [{ text: "📱 Telebirr" }, { text: "🏦 CBE Birr" }],
-                        [{ text: "❌ ሰርዝ" }]
-                    ], 
-                    resize_keyboard: true 
-                } 
-            }
-        );
-    } catch (error) {
-        console.error('Deposit error:', error);
-        await bot.sendMessage(chatId, 'ይቅርታ፣ ስህተት ተፈጥሯል።');
-    }
+    await bot.sendMessage(chatId, 
+        "💳 ገንዘብ ለማስገባት 'Play' ቁልፍን ተጭነው 'Wallet' ታብ ውስጥ ይግቡ።\n\nበWallet ታብ ውስጥ ዲፖዚትና ማውጣት በቀላሉ ማድረግ ይችላሉ!",
+        { reply_markup: getMainKeyboard(telegramId) }
+    );
 });
 
 // Handle Telebirr selection
@@ -1577,21 +1493,138 @@ app.get('/api/wallet/:userId', async (req, res) => {
 
         if (result.rows.length === 0) {
             return res.json({ 
+                success: false,
                 balance: 0, 
                 is_registered: false,
-                stake: 10
+                stake: 10,
+                totalGames: 0,
+                wins: 0,
+                totalWinnings: 0,
+                history: []
             });
         }
 
         const user = result.rows[0];
+        const internalUserId = user.id;
+        
+        const gamesResult = await pool.query(
+            `SELECT COUNT(*) as total_games FROM game_participants WHERE user_id = $1`,
+            [internalUserId]
+        );
+        
+        const winsResult = await pool.query(
+            `SELECT COUNT(*) as wins FROM games WHERE winner_id = $1`,
+            [internalUserId]
+        );
+        
+        const winningsResult = await pool.query(
+            `SELECT COALESCE(SUM(prize_amount), 0) as total_winnings FROM games WHERE winner_id = $1`,
+            [internalUserId]
+        );
+        
+        const historyResult = await pool.query(`
+            SELECT 'deposit' as type, amount, status, created_at FROM deposits WHERE user_id = $1
+            UNION ALL
+            SELECT 'withdraw' as type, amount, status, created_at FROM withdrawals WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+        `, [internalUserId]);
+        
         res.json({ 
+            success: true,
             balance: parseFloat(user.balance) || 0, 
             is_registered: user.is_registered || false,
-            stake: 10
+            stake: 10,
+            totalGames: parseInt(gamesResult.rows[0].total_games) || 0,
+            wins: parseInt(winsResult.rows[0].wins) || 0,
+            totalWinnings: parseFloat(winningsResult.rows[0].total_winnings) || 0,
+            history: historyResult.rows
         });
     } catch (err) {
         console.error('Wallet error:', err);
-        res.status(500).json({ balance: 0, is_registered: false, stake: 10 });
+        res.status(500).json({ success: false, balance: 0, is_registered: false, stake: 10, history: [] });
+    }
+});
+
+// Deposit request from mini-app
+app.post('/api/deposits', async (req, res) => {
+    try {
+        const { telegram_id, amount, reference } = req.body;
+        
+        if (!telegram_id || !amount || !reference) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        
+        const userResult = await pool.query(
+            'SELECT id FROM users WHERE telegram_id = $1',
+            [parseInt(telegram_id)]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        
+        await pool.query(
+            'INSERT INTO deposits (user_id, amount, reference, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+            [userId, amount, reference, 'pending']
+        );
+        
+        await notifyAdmin(`💳 <b>New Deposit Request</b>\nAmount: ${amount} ETB\nReference: ${reference}\nUser ID: ${telegram_id}`);
+        
+        res.json({ success: true, message: 'Deposit request submitted' });
+    } catch (err) {
+        console.error('Deposit error:', err);
+        res.status(500).json({ success: false, message: 'Failed to submit deposit' });
+    }
+});
+
+// Withdrawal request from mini-app
+app.post('/api/withdrawals', async (req, res) => {
+    try {
+        const { telegram_id, amount, phone_number } = req.body;
+        
+        if (!telegram_id || !amount || !phone_number) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+        
+        const userResult = await pool.query(
+            'SELECT u.id, w.balance FROM users u JOIN wallets w ON u.id = w.user_id WHERE u.telegram_id = $1',
+            [parseInt(telegram_id)]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        const balance = parseFloat(userResult.rows[0].balance) || 0;
+        
+        if (balance < amount) {
+            return res.json({ success: false, message: 'ቀሪ ሒሳብዎ በቂ አይደለም' });
+        }
+        
+        const eligibility = await checkWithdrawEligibility(parseInt(telegram_id));
+        if (!eligibility.eligible) {
+            let message = 'ማውጣት አይችሉም';
+            if (eligibility.reason === 'no_deposit_or_win') {
+                message = 'ለማውጣት ቢያንስ 1 ዲፖዚት ወይም 1 ድል ያስፈልግዎታል';
+            }
+            return res.json({ success: false, message });
+        }
+        
+        await pool.query(
+            'INSERT INTO withdrawals (user_id, amount, phone_number, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+            [userId, amount, phone_number, 'pending']
+        );
+        
+        await notifyAdmin(`💸 <b>New Withdrawal Request</b>\nAmount: ${amount} ETB\nPhone: ${phone_number}\nUser ID: ${telegram_id}`);
+        
+        res.json({ success: true, message: 'Withdrawal request submitted' });
+    } catch (err) {
+        console.error('Withdrawal error:', err);
+        res.status(500).json({ success: false, message: 'Failed to submit withdrawal' });
     }
 });
 

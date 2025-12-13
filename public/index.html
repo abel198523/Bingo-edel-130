@@ -230,6 +230,132 @@
             </div>
         </div>
 
+        <!-- Wallet Screen -->
+        <div id="wallet-screen" style="display: none;">
+            <div class="wallet-container">
+                <div class="wallet-header">
+                    <h2>💳 Wallet</h2>
+                    <button class="wallet-refresh-btn" id="wallet-refresh-btn">
+                        <span class="refresh-icon">↻</span>
+                    </button>
+                </div>
+                
+                <div class="wallet-balance-card">
+                    <div class="balance-label">ቀሪ ሒሳብ</div>
+                    <div class="balance-amount" id="wallet-balance">0.00</div>
+                    <div class="balance-currency">ETB</div>
+                    <div class="balance-updated" id="wallet-updated">Last updated: --</div>
+                </div>
+                
+                <div class="wallet-stats">
+                    <div class="wallet-stat-item">
+                        <span class="stat-icon">🎮</span>
+                        <span class="stat-value" id="wallet-total-games">0</span>
+                        <span class="stat-label">ጨዋታዎች</span>
+                    </div>
+                    <div class="wallet-stat-item">
+                        <span class="stat-icon">🏆</span>
+                        <span class="stat-value" id="wallet-wins">0</span>
+                        <span class="stat-label">ድሎች</span>
+                    </div>
+                    <div class="wallet-stat-item">
+                        <span class="stat-icon">💰</span>
+                        <span class="stat-value" id="wallet-total-winnings">0</span>
+                        <span class="stat-label">ገቢ</span>
+                    </div>
+                </div>
+                
+                <div class="wallet-actions">
+                    <button class="wallet-action-btn deposit-btn" id="wallet-deposit-btn">
+                        <span class="action-icon">💳</span>
+                        <span class="action-text">ማስገባት</span>
+                        <span class="action-subtitle">Deposit</span>
+                    </button>
+                    <button class="wallet-action-btn withdraw-btn" id="wallet-withdraw-btn">
+                        <span class="action-icon">💸</span>
+                        <span class="action-text">ማውጣት</span>
+                        <span class="action-subtitle">Withdraw</span>
+                    </button>
+                </div>
+                
+                <div class="wallet-history">
+                    <h3>የቅርብ ጊዜ እንቅስቃሴዎች</h3>
+                    <div class="history-list" id="wallet-history-list">
+                        <div class="history-empty">ምንም እንቅስቃሴ የለም</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="selection-footer">
+                <div class="footer-btn" data-target="game">Game</div>
+                <div class="footer-btn active" data-target="wallet">Wallet</div>
+                <div class="footer-btn" data-target="profile">Profile</div>
+            </div>
+        </div>
+
+        <!-- Deposit Modal -->
+        <div id="deposit-modal" class="wallet-modal" style="display: none;">
+            <div class="wallet-modal-content">
+                <button class="modal-close-btn" id="deposit-modal-close">&times;</button>
+                <h2>💳 ገንዘብ ማስገባት</h2>
+                
+                <div class="deposit-amount-selection">
+                    <p>መጠን ይምረጡ</p>
+                    <div class="amount-buttons">
+                        <button class="amount-btn" data-amount="50">50 ETB</button>
+                        <button class="amount-btn" data-amount="100">100 ETB</button>
+                        <button class="amount-btn" data-amount="200">200 ETB</button>
+                        <button class="amount-btn" data-amount="500">500 ETB</button>
+                    </div>
+                    <div class="custom-amount">
+                        <input type="number" id="deposit-custom-amount" placeholder="ሌላ መጠን..." min="10">
+                    </div>
+                </div>
+                
+                <div class="deposit-instructions">
+                    <p>📱 ወደሚከተለው ቁጥር ይላኩ:</p>
+                    <div class="deposit-phone">0912345678</div>
+                    <p class="deposit-note">ከላኩ በኋላ ማረጋገጫ ቁጥር ያስገቡ</p>
+                </div>
+                
+                <div class="deposit-form">
+                    <input type="text" id="deposit-reference" placeholder="የማረጋገጫ ቁጥር (Transaction ID)">
+                    <button class="deposit-submit-btn" id="deposit-submit-btn">ማረጋገጫ ላክ</button>
+                </div>
+                
+                <div class="deposit-status" id="deposit-status"></div>
+            </div>
+        </div>
+
+        <!-- Withdraw Modal -->
+        <div id="withdraw-modal" class="wallet-modal" style="display: none;">
+            <div class="wallet-modal-content">
+                <button class="modal-close-btn" id="withdraw-modal-close">&times;</button>
+                <h2>💸 ገንዘብ ማውጣት</h2>
+                
+                <div class="withdraw-balance-info">
+                    <span>ያለዎት ቀሪ ሒሳብ:</span>
+                    <span class="withdraw-current-balance" id="withdraw-current-balance">0.00 ETB</span>
+                </div>
+                
+                <div class="withdraw-form">
+                    <input type="number" id="withdraw-amount" placeholder="መጠን (ETB)" min="10">
+                    <input type="text" id="withdraw-phone" placeholder="ስልክ ቁጥር (09...)">
+                    <button class="withdraw-submit-btn" id="withdraw-submit-btn">ጥያቄ ላክ</button>
+                </div>
+                
+                <div class="withdraw-note">
+                    <p>⚠️ ማውጣት ለመቻል:</p>
+                    <ul>
+                        <li>ቢያንስ 1 ዲፖዚት ማድረግ አለብዎት</li>
+                        <li>ወይም ቢያንስ 1 ጨዋታ ማሸነፍ አለብዎት</li>
+                    </ul>
+                </div>
+                
+                <div class="withdraw-status" id="withdraw-status"></div>
+            </div>
+        </div>
+
         <div id="game-screen" style="display: none;">
             
             <div class="game-header">

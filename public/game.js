@@ -89,17 +89,20 @@ function initializeFooterNavigation() {
             const profileScreen = document.getElementById('profile-screen');
             const gameScreen = document.getElementById('game-screen');
             const adminScreen = document.getElementById('admin-screen');
+            const walletScreen = document.getElementById('wallet-screen');
             
             if (landingScreen) landingScreen.style.display = 'none';
             if (selectionScreen) selectionScreen.style.display = 'none';
             if (profileScreen) profileScreen.style.display = 'none';
             if (gameScreen) gameScreen.style.display = 'none';
             if (adminScreen) adminScreen.style.display = 'none';
+            if (walletScreen) walletScreen.style.display = 'none';
             
             if (target === 'game') {
                 if (landingScreen) landingScreen.style.display = 'flex';
             } else if (target === 'wallet') {
-                if (landingScreen) landingScreen.style.display = 'flex';
+                if (walletScreen) walletScreen.style.display = 'flex';
+                loadWalletData();
             } else if (target === 'profile') {
                 if (profileScreen) profileScreen.style.display = 'flex';
                 loadProfile();
@@ -114,6 +117,8 @@ function initializeFooterNavigation() {
     if (profileRefreshBtn) {
         profileRefreshBtn.addEventListener('click', loadProfile);
     }
+    
+    initializeWallet();
 }
 
 async function loadProfile() {
@@ -1104,3 +1109,323 @@ window.adminApproveDeposit = adminApproveDeposit;
 window.adminRejectDeposit = adminRejectDeposit;
 window.adminApproveWithdrawal = adminApproveWithdrawal;
 window.adminRejectWithdrawal = adminRejectWithdrawal;
+
+// ================================================
+// Wallet Functions
+// ================================================
+
+let selectedDepositAmount = 0;
+
+function initializeWallet() {
+    const walletRefreshBtn = document.getElementById('wallet-refresh-btn');
+    if (walletRefreshBtn) {
+        walletRefreshBtn.addEventListener('click', () => {
+            walletRefreshBtn.classList.add('spinning');
+            loadWalletData().finally(() => {
+                setTimeout(() => walletRefreshBtn.classList.remove('spinning'), 500);
+            });
+        });
+    }
+    
+    const depositBtn = document.getElementById('wallet-deposit-btn');
+    if (depositBtn) {
+        depositBtn.addEventListener('click', openDepositModal);
+    }
+    
+    const withdrawBtn = document.getElementById('wallet-withdraw-btn');
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener('click', openWithdrawModal);
+    }
+    
+    const depositModalClose = document.getElementById('deposit-modal-close');
+    if (depositModalClose) {
+        depositModalClose.addEventListener('click', closeDepositModal);
+    }
+    
+    const withdrawModalClose = document.getElementById('withdraw-modal-close');
+    if (withdrawModalClose) {
+        withdrawModalClose.addEventListener('click', closeWithdrawModal);
+    }
+    
+    const amountBtns = document.querySelectorAll('.amount-btn');
+    amountBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            amountBtns.forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedDepositAmount = parseInt(this.dataset.amount);
+            document.getElementById('deposit-custom-amount').value = '';
+        });
+    });
+    
+    const customAmountInput = document.getElementById('deposit-custom-amount');
+    if (customAmountInput) {
+        customAmountInput.addEventListener('input', function() {
+            document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+            selectedDepositAmount = parseInt(this.value) || 0;
+        });
+    }
+    
+    const depositSubmitBtn = document.getElementById('deposit-submit-btn');
+    if (depositSubmitBtn) {
+        depositSubmitBtn.addEventListener('click', submitDeposit);
+    }
+    
+    const withdrawSubmitBtn = document.getElementById('withdraw-submit-btn');
+    if (withdrawSubmitBtn) {
+        withdrawSubmitBtn.addEventListener('click', submitWithdraw);
+    }
+    
+    const depositModal = document.getElementById('deposit-modal');
+    if (depositModal) {
+        depositModal.addEventListener('click', function(e) {
+            if (e.target === this) closeDepositModal();
+        });
+    }
+    
+    const withdrawModal = document.getElementById('withdraw-modal');
+    if (withdrawModal) {
+        withdrawModal.addEventListener('click', function(e) {
+            if (e.target === this) closeWithdrawModal();
+        });
+    }
+}
+
+async function loadWalletData() {
+    if (!currentUserId) {
+        console.log('No user ID for wallet');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const balanceEl = document.getElementById('wallet-balance');
+            if (balanceEl) balanceEl.textContent = parseFloat(data.balance).toFixed(2);
+            
+            const updatedEl = document.getElementById('wallet-updated');
+            if (updatedEl) {
+                const now = new Date();
+                updatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+            }
+            
+            const gamesEl = document.getElementById('wallet-total-games');
+            if (gamesEl) gamesEl.textContent = data.totalGames || 0;
+            
+            const winsEl = document.getElementById('wallet-wins');
+            if (winsEl) winsEl.textContent = data.wins || 0;
+            
+            const winningsEl = document.getElementById('wallet-total-winnings');
+            if (winningsEl) winningsEl.textContent = data.totalWinnings || 0;
+            
+            renderWalletHistory(data.history || []);
+        }
+    } catch (error) {
+        console.error('Error loading wallet:', error);
+    }
+}
+
+function renderWalletHistory(history) {
+    const historyList = document.getElementById('wallet-history-list');
+    if (!historyList) return;
+    
+    if (!history || history.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">ምንም እንቅስቃሴ የለም</div>';
+        return;
+    }
+    
+    historyList.innerHTML = history.map(item => {
+        let icon = '💰';
+        let iconClass = 'deposit';
+        let amountClass = 'positive';
+        let typeText = 'ዲፖዚት';
+        let amountPrefix = '+';
+        
+        if (item.type === 'withdraw') {
+            icon = '💸';
+            iconClass = 'withdraw';
+            amountClass = item.status === 'pending' ? 'pending' : 'negative';
+            typeText = 'ማውጣት';
+            amountPrefix = '-';
+        } else if (item.type === 'game') {
+            icon = '🎮';
+            iconClass = 'game';
+            amountClass = 'negative';
+            typeText = 'ጨዋታ';
+            amountPrefix = '-';
+        } else if (item.type === 'win') {
+            icon = '🏆';
+            iconClass = 'win';
+            amountClass = 'positive';
+            typeText = 'ድል';
+            amountPrefix = '+';
+        }
+        
+        if (item.status === 'pending') {
+            amountClass = 'pending';
+            typeText += ' (በመጠባበቅ)';
+        }
+        
+        const date = new Date(item.created_at);
+        const dateStr = date.toLocaleDateString('am-ET', { month: 'short', day: 'numeric' });
+        
+        return `
+            <div class="history-item">
+                <div class="history-item-left">
+                    <div class="history-icon ${iconClass}">${icon}</div>
+                    <div class="history-details">
+                        <span class="history-type">${typeText}</span>
+                        <span class="history-date">${dateStr}</span>
+                    </div>
+                </div>
+                <span class="history-amount ${amountClass}">${amountPrefix}${parseFloat(item.amount).toFixed(0)} ETB</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function openDepositModal() {
+    const modal = document.getElementById('deposit-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        selectedDepositAmount = 0;
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById('deposit-custom-amount').value = '';
+        document.getElementById('deposit-reference').value = '';
+        document.getElementById('deposit-status').innerHTML = '';
+    }
+}
+
+function closeDepositModal() {
+    const modal = document.getElementById('deposit-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openWithdrawModal() {
+    const modal = document.getElementById('withdraw-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        document.getElementById('withdraw-amount').value = '';
+        document.getElementById('withdraw-phone').value = '';
+        document.getElementById('withdraw-status').innerHTML = '';
+        
+        const balanceEl = document.getElementById('wallet-balance');
+        const currentBalanceEl = document.getElementById('withdraw-current-balance');
+        if (balanceEl && currentBalanceEl) {
+            currentBalanceEl.textContent = balanceEl.textContent + ' ETB';
+        }
+    }
+}
+
+function closeWithdrawModal() {
+    const modal = document.getElementById('withdraw-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function submitDeposit() {
+    const reference = document.getElementById('deposit-reference').value.trim();
+    const statusEl = document.getElementById('deposit-status');
+    const submitBtn = document.getElementById('deposit-submit-btn');
+    
+    if (!selectedDepositAmount || selectedDepositAmount < 10) {
+        statusEl.className = 'deposit-status error';
+        statusEl.textContent = 'እባክዎ መጠን ይምረጡ (ቢያንስ 10 ብር)';
+        return;
+    }
+    
+    if (!reference) {
+        statusEl.className = 'deposit-status error';
+        statusEl.textContent = 'እባክዎ የማረጋገጫ ቁጥር ያስገቡ';
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    statusEl.className = 'deposit-status pending';
+    statusEl.textContent = 'በመላክ ላይ...';
+    
+    try {
+        const response = await fetch('/api/deposits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: currentUserId,
+                amount: selectedDepositAmount,
+                reference: reference
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusEl.className = 'deposit-status success';
+            statusEl.textContent = '✅ ዲፖዚት ጥያቄ ተልኳል! Admin ሲያረጋግጥ ይገባል።';
+            setTimeout(() => {
+                closeDepositModal();
+                loadWalletData();
+            }, 2000);
+        } else {
+            statusEl.className = 'deposit-status error';
+            statusEl.textContent = data.message || 'ዲፖዚት አልተሳካም';
+        }
+    } catch (error) {
+        statusEl.className = 'deposit-status error';
+        statusEl.textContent = 'ስህተት ተከስቷል። እንደገና ይሞክሩ።';
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
+
+async function submitWithdraw() {
+    const amount = parseFloat(document.getElementById('withdraw-amount').value);
+    const phone = document.getElementById('withdraw-phone').value.trim();
+    const statusEl = document.getElementById('withdraw-status');
+    const submitBtn = document.getElementById('withdraw-submit-btn');
+    
+    if (!amount || amount < 10) {
+        statusEl.className = 'withdraw-status error';
+        statusEl.textContent = 'እባክዎ ትክክለኛ መጠን ያስገቡ (ቢያንስ 10 ብር)';
+        return;
+    }
+    
+    if (!phone || phone.length < 10) {
+        statusEl.className = 'withdraw-status error';
+        statusEl.textContent = 'እባክዎ ትክክለኛ ስልክ ቁጥር ያስገቡ';
+        return;
+    }
+    
+    submitBtn.disabled = true;
+    statusEl.className = 'withdraw-status pending';
+    statusEl.textContent = 'በመላክ ላይ...';
+    
+    try {
+        const response = await fetch('/api/withdrawals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: currentUserId,
+                amount: amount,
+                phone_number: phone
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusEl.className = 'withdraw-status success';
+            statusEl.textContent = '✅ ማውጣት ጥያቄ ተልኳል! Admin ሲያረጋግጥ ይላካል።';
+            setTimeout(() => {
+                closeWithdrawModal();
+                loadWalletData();
+            }, 2000);
+        } else {
+            statusEl.className = 'withdraw-status error';
+            statusEl.textContent = data.message || 'ማውጣት አልተሳካም';
+        }
+    } catch (error) {
+        statusEl.className = 'withdraw-status error';
+        statusEl.textContent = 'ስህተት ተከስቷል። እንደገና ይሞክሩ።';
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
