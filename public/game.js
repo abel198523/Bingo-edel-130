@@ -413,9 +413,24 @@ async function loadWallet() {
 }
 
 function updateWalletDisplay(balance) {
+    const formattedBalance = parseFloat(balance || 0).toFixed(2);
+    
+    // Update main wallet display in selection screen header
     const walletElement = document.getElementById('main-wallet-value');
     if (walletElement) {
-        walletElement.textContent = parseFloat(balance).toFixed(2);
+        walletElement.textContent = formattedBalance;
+    }
+    
+    // Update wallet screen balance
+    const walletBalanceElement = document.getElementById('wallet-balance');
+    if (walletBalanceElement) {
+        walletBalanceElement.textContent = formattedBalance;
+    }
+    
+    // Update profile balance
+    const profileBalanceElement = document.getElementById('profile-balance');
+    if (profileBalanceElement) {
+        profileBalanceElement.textContent = formattedBalance + ' ETB';
     }
 }
 
