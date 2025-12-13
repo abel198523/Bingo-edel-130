@@ -156,6 +156,25 @@ async function loadProfile() {
             
             const winsEl = document.getElementById('profile-wins');
             if (winsEl) winsEl.textContent = profile.wins || 0;
+            
+            // Display referral code
+            const referralCodeEl = document.getElementById('profile-referral-code');
+            if (referralCodeEl && profile.referralCode) {
+                referralCodeEl.textContent = profile.referralCode;
+            }
+            
+            // Set up copy button
+            const copyBtn = document.getElementById('copy-referral-btn');
+            if (copyBtn && profile.referralLink) {
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(profile.referralLink).then(() => {
+                        copyBtn.textContent = 'ተኮፒዋል!';
+                        setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
+                    }).catch(() => {
+                        alert('ሊንኩ: ' + profile.referralLink);
+                    });
+                };
+            }
         }
     } catch (error) {
         console.error('Error loading profile:', error);
@@ -352,6 +371,15 @@ function renderPlayerCard(cardId) {
 
 function initializeUser() {
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Check for referral code in URL
+        const refCode = urlParams.get('ref');
+        if (refCode) {
+            localStorage.setItem('referralCode', refCode);
+            console.log('Referral code saved:', refCode);
+        }
+        
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.ready();
@@ -361,7 +389,6 @@ function initializeUser() {
                 currentUserId = tg.initDataUnsafe.user.id;
                 console.log('Telegram user ID:', currentUserId);
             } else {
-                const urlParams = new URLSearchParams(window.location.search);
                 const tgId = urlParams.get('tg_id');
                 if (tgId) {
                     currentUserId = parseInt(tgId);
@@ -372,7 +399,6 @@ function initializeUser() {
                 }
             }
         } else {
-            const urlParams = new URLSearchParams(window.location.search);
             const tgId = urlParams.get('tg_id');
             if (tgId) {
                 currentUserId = parseInt(tgId);
@@ -1332,9 +1358,9 @@ async function submitDeposit() {
     const statusEl = document.getElementById('deposit-status');
     const submitBtn = document.getElementById('deposit-submit-btn');
     
-    if (!selectedDepositAmount || selectedDepositAmount < 10) {
+    if (!selectedDepositAmount || selectedDepositAmount < 50) {
         statusEl.className = 'deposit-status error';
-        statusEl.textContent = 'እባክዎ መጠን ይምረጡ (ቢያንስ 10 ብር)';
+        statusEl.textContent = 'እባክዎ መጠን ይምረጡ (ቢያንስ 50 ብር)';
         return;
     }
     
@@ -1386,9 +1412,9 @@ async function submitWithdraw() {
     const statusEl = document.getElementById('withdraw-status');
     const submitBtn = document.getElementById('withdraw-submit-btn');
     
-    if (!amount || amount < 10) {
+    if (!amount || amount < 50) {
         statusEl.className = 'withdraw-status error';
-        statusEl.textContent = 'እባክዎ ትክክለኛ መጠን ያስገቡ (ቢያንስ 10 ብር)';
+        statusEl.textContent = 'እባክዎ ትክክለኛ መጠን ያስገቡ (ቢያንስ 50 ብር)';
         return;
     }
     

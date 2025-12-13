@@ -2183,3 +2183,54 @@ html, body {
     background: rgba(255, 127, 80, 0.2);
     color: var(--color-orange);
 }
+
+
+/* Referral Section Styles */
+.referral-section {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.referral-section h3 {
+    color: var(--color-accent);
+    margin-bottom: 5px;
+}
+
+.referral-code-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-top: 10px;
+}
+
+.referral-code-box span {
+    font-family: monospace;
+    font-size: 1.1em;
+    color: var(--color-accent);
+    letter-spacing: 1px;
+}
+
+.copy-btn {
+    background: var(--color-accent);
+    color: #000;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    transform: scale(1.05);
+    box-shadow: var(--glow-gold);
+}
+

@@ -60,6 +60,63 @@ const userStates = new Map();
 // Admin Telegram IDs - Add admin IDs here
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 
+// Generate unique referral code
+function generateReferralCode(userId) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'ED';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code + userId.toString().slice(-2);
+}
+
+// Award referral bonus to referrer
+async function awardReferralBonus(referrerId, referredUserId) {
+    const REFERRAL_BONUS = 2.00;
+    
+    try {
+        // Check if bonus already awarded
+        const existingBonus = await pool.query(
+            'SELECT id FROM referrals WHERE referred_user_id = $1 AND bonus_awarded = true',
+            [referredUserId]
+        );
+        
+        if (existingBonus.rows.length > 0) {
+            return false; // Already awarded
+        }
+        
+        // Award bonus to referrer
+        await pool.query(
+            'UPDATE wallets SET balance = balance + $1 WHERE user_id = $2',
+            [REFERRAL_BONUS, referrerId]
+        );
+        
+        // Record the referral
+        await pool.query(
+            `INSERT INTO referrals (referrer_id, referred_user_id, bonus_amount, bonus_awarded, bonus_awarded_at) 
+             VALUES ($1, $2, $3, true, NOW())
+             ON CONFLICT (referred_user_id) DO UPDATE SET bonus_awarded = true, bonus_awarded_at = NOW()`,
+            [referrerId, referredUserId, REFERRAL_BONUS]
+        );
+        
+        // Record transaction
+        const balanceResult = await pool.query('SELECT balance FROM wallets WHERE user_id = $1', [referrerId]);
+        const newBalance = parseFloat(balanceResult.rows[0]?.balance || 0);
+        
+        await pool.query(
+            `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, description) 
+             VALUES ($1, 'referral_bonus', $2, $3, $4, $5)`,
+            [referrerId, REFERRAL_BONUS, newBalance - REFERRAL_BONUS, newBalance, 'Referral bonus - new user registered']
+        );
+        
+        console.log(`Referral bonus of ${REFERRAL_BONUS} ETB awarded to user ${referrerId}`);
+        return true;
+    } catch (err) {
+        console.error('Error awarding referral bonus:', err);
+        return false;
+    }
+}
+
 // Helper function to get main keyboard
 function getMainKeyboard(telegramId) {
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
@@ -221,9 +278,24 @@ bot.on('contact', async (msg) => {
             [userId, 10.00]
         );
         
-        console.log(`New user registered: ${telegramId} - ${phoneNumber}`);
+        // Generate and save referral code
+        const referralCode = generateReferralCode(userId);
+        await pool.query('UPDATE users SET referral_code = $1 WHERE id = $2', [referralCode, userId]);
         
-        bot.sendMessage(chatId, "✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+        // Check if user was referred by someone (from userState)
+        const state = userStates.get(telegramId);
+        if (state && state.referrerCode) {
+            const referrerResult = await pool.query('SELECT id FROM users WHERE referral_code = $1', [state.referrerCode]);
+            if (referrerResult.rows.length > 0) {
+                const referrerId = referrerResult.rows[0].id;
+                await pool.query('UPDATE users SET referrer_id = $1 WHERE id = $2', [referrerId, userId]);
+                await awardReferralBonus(referrerId, userId);
+            }
+        }
+        
+        console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
+        
+        bot.sendMessage(chatId, `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`, {
             reply_markup: getMainKeyboard(telegramId)
         });
         
@@ -344,8 +416,8 @@ bot.on('message', async (msg) => {
     if (state.action === 'withdraw') {
         if (state.step === 'amount') {
             const amount = parseFloat(text);
-            if (isNaN(amount) || amount <= 0) {
-                await bot.sendMessage(chatId, '❌ እባክዎ ትክክለኛ መጠን ያስገቡ።');
+            if (isNaN(amount) || amount < 50) {
+                await bot.sendMessage(chatId, '❌ ዝቅተኛው የማውጣት መጠን 50 ብር ነው።');
                 return;
             }
             
@@ -415,8 +487,8 @@ bot.on('message', async (msg) => {
     if (state.action === 'deposit') {
         if (state.step === 'amount') {
             const amount = parseFloat(text);
-            if (isNaN(amount) || amount <= 0) {
-                await bot.sendMessage(chatId, '❌ እባክዎ ትክክለኛ መጠን ያስገቡ።');
+            if (isNaN(amount) || amount < 50) {
+                await bot.sendMessage(chatId, '❌ ዝቅተኛው የዲፖዚት መጠን 50 ብር ነው።');
                 return;
             }
             
@@ -1460,7 +1532,7 @@ app.get('/api/profile/:telegramId', async (req, res) => {
         const tgId = parseInt(telegramId) || 0;
         
         const userResult = await pool.query(
-            `SELECT u.id, u.username, u.telegram_id, u.phone_number, u.is_registered, u.created_at, w.balance 
+            `SELECT u.id, u.username, u.telegram_id, u.phone_number, u.is_registered, u.created_at, u.referral_code, w.balance 
              FROM users u 
              LEFT JOIN wallets w ON u.id = w.user_id 
              WHERE u.telegram_id = $1`,
@@ -1492,7 +1564,9 @@ app.get('/api/profile/:telegramId', async (req, res) => {
                 balance: parseFloat(user.balance) || 0,
                 totalGames: parseInt(gamesResult.rows[0].total_games) || 0,
                 wins: parseInt(winsResult.rows[0].wins) || 0,
-                memberSince: user.created_at
+                memberSince: user.created_at,
+                referralCode: user.referral_code || null,
+                referralLink: user.referral_code ? `${MINI_APP_URL}?ref=${user.referral_code}` : null
             }
         });
     } catch (err) {

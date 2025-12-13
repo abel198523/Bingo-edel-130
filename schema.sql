@@ -8,7 +8,23 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
-    is_active BOOLEAN DEFAULT true
+    is_active BOOLEAN DEFAULT true,
+    is_registered BOOLEAN DEFAULT false,
+    phone_number VARCHAR(20),
+    referral_code VARCHAR(20) UNIQUE,
+    referrer_id INTEGER REFERENCES users(id)
+);
+
+-- Referrals tracking table
+CREATE TABLE IF NOT EXISTS referrals (
+    id SERIAL PRIMARY KEY,
+    referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    referred_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    bonus_amount DECIMAL(10, 2) DEFAULT 2.00,
+    bonus_awarded BOOLEAN DEFAULT false,
+    bonus_awarded_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(referred_user_id)
 );
 
 -- Wallets table for player balances
@@ -120,3 +136,5 @@ CREATE INDEX IF NOT EXISTS idx_deposits_user_id ON deposits(user_id);
 CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_user_id ON withdrawals(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
+CREATE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer_id ON referrals(referrer_id);

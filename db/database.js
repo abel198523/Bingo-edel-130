@@ -26,7 +26,20 @@ async function initializeDatabase() {
                 is_registered BOOLEAN DEFAULT false,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_login TIMESTAMP,
-                is_active BOOLEAN DEFAULT true
+                is_active BOOLEAN DEFAULT true,
+                referral_code VARCHAR(20) UNIQUE,
+                referrer_id INTEGER REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS referrals (
+                id SERIAL PRIMARY KEY,
+                referrer_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                referred_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                bonus_amount DECIMAL(10, 2) DEFAULT 2.00,
+                bonus_awarded BOOLEAN DEFAULT false,
+                bonus_awarded_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(referred_user_id)
             );
 
             CREATE TABLE IF NOT EXISTS wallets (
@@ -105,6 +118,15 @@ async function initializeDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        
+        // Add referral columns to existing users table if they don't exist
+        try {
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referrer_id INTEGER REFERENCES users(id)`);
+        } catch (alterErr) {
+            // Columns may already exist
+        }
+        
         console.log('Database tables initialized');
     } catch (err) {
         console.error('Error initializing database:', err);
