@@ -1556,7 +1556,7 @@ app.post('/api/deposits', async (req, res) => {
         }
         
         const userResult = await pool.query(
-            'SELECT id FROM users WHERE telegram_id = $1',
+            'SELECT id, username FROM users WHERE telegram_id = $1',
             [parseInt(telegram_id)]
         );
         
@@ -1565,13 +1565,20 @@ app.post('/api/deposits', async (req, res) => {
         }
         
         const userId = userResult.rows[0].id;
+        const username = userResult.rows[0].username || 'Unknown';
         
         await pool.query(
-            'INSERT INTO deposits (user_id, amount, reference, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
-            [userId, amount, reference, 'pending']
+            'INSERT INTO deposits (user_id, amount, payment_method, confirmation_code, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+            [userId, amount, 'telebirr', reference, 'pending']
         );
         
-        await notifyAdmin(`💳 <b>New Deposit Request</b>\nAmount: ${amount} ETB\nReference: ${reference}\nUser ID: ${telegram_id}`);
+        const adminMessage = `🔔 <b>አዲስ ዲፖዚት ጥያቄ</b>\n\n` +
+            `👤 ተጠቃሚ: ${username}\n` +
+            `💵 መጠን: ${amount} ብር\n` +
+            `🔑 ኮድ: ${reference}\n` +
+            `📅 ቀን: ${new Date().toLocaleString('am-ET')}`;
+        
+        await notifyAdmin(adminMessage);
         
         res.json({ success: true, message: 'Deposit request submitted' });
     } catch (err) {
