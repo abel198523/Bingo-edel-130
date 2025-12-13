@@ -1,4 +1,4 @@
--- Chewatabingo Database Schema
+-- Edele Bingo Database Schema
 
 -- Users table for player registration
 CREATE TABLE IF NOT EXISTS users (

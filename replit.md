@@ -1,7 +1,7 @@
-# Chewatabingo - Telegram Bingo Game
+# Edele Bingo - Telegram Bingo Game
 
 ## Overview
-Chewatabingo is a real-time Bingo game built as a Telegram Mini App with integrated payment system (deposits/withdrawals) and admin panel.
+Edele Bingo is a real-time Bingo game built as a Telegram Mini App with integrated payment system (deposits/withdrawals) and admin panel.
 
 ## Recent Changes (December 2024)
 - **Moved Deposit/Withdraw to Mini-App Wallet Tab** (Dec 13, 2025)
@@ -79,8 +79,9 @@ Access at `/admin.html` - Standalone admin panel for transaction management.
 
 ## Withdrawal Eligibility
 To withdraw, players must:
-1. Have made at least 1 confirmed deposit
-2. OR have won at least 1 game
+1. Have a minimum balance of 50 birr
+2. Have made at least 1 successful (confirmed) deposit transaction
+3. If they won using only the welcome bonus, they must deposit at least 100 birr first
 
 ## Wallet Tab (Mini-App)
 The Wallet tab in the mini-app provides:

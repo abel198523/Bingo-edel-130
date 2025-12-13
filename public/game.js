@@ -53,7 +53,7 @@ function showRegistrationRequired() {
         regScreen.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;';
         regScreen.innerHTML = `
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; text-align: center; padding: 20px;">
-                <h1 style="font-size: 2em; margin-bottom: 20px;">🎰 ችዋታቢንጎ</h1>
+                <h1 style="font-size: 2em; margin-bottom: 20px;">🎰 Edele Bingo</h1>
                 <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 300px;">
                     <p style="font-size: 1.2em; margin-bottom: 20px;">⚠️ አልተመዘገቡም</p>
                     <p style="margin-bottom: 20px;">ይህን ጨዋታ ለመጫወት መጀመሪያ መመዝገብ አለብዎት።</p>
@@ -396,13 +396,13 @@ async function loadWallet() {
     }
     
     try {
-        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
         const data = await response.json();
         
-        updateWalletDisplay(data.balance);
-        
-        if (data.stake) {
-            currentStake = data.stake;
+        if (data.success) {
+            updateWalletDisplay(data.balance);
+        } else {
+            updateWalletDisplay(data.balance || 0);
         }
         
         console.log('Wallet loaded:', data);
@@ -1197,30 +1197,31 @@ async function loadWalletData() {
     }
     
     try {
-        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
         const data = await response.json();
         
-        if (data.success) {
-            const balanceEl = document.getElementById('wallet-balance');
-            if (balanceEl) balanceEl.textContent = parseFloat(data.balance).toFixed(2);
-            
-            const updatedEl = document.getElementById('wallet-updated');
-            if (updatedEl) {
-                const now = new Date();
-                updatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-            }
-            
-            const gamesEl = document.getElementById('wallet-total-games');
-            if (gamesEl) gamesEl.textContent = data.totalGames || 0;
-            
-            const winsEl = document.getElementById('wallet-wins');
-            if (winsEl) winsEl.textContent = data.wins || 0;
-            
-            const winningsEl = document.getElementById('wallet-total-winnings');
-            if (winningsEl) winningsEl.textContent = data.totalWinnings || 0;
-            
-            renderWalletHistory(data.history || []);
+        const balanceEl = document.getElementById('wallet-balance');
+        if (balanceEl) balanceEl.textContent = parseFloat(data.balance || 0).toFixed(2);
+        
+        // Also update main wallet display
+        updateWalletDisplay(data.balance || 0);
+        
+        const updatedEl = document.getElementById('wallet-updated');
+        if (updatedEl) {
+            const now = new Date();
+            updatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
         }
+        
+        const gamesEl = document.getElementById('wallet-total-games');
+        if (gamesEl) gamesEl.textContent = data.totalGames || 0;
+        
+        const winsEl = document.getElementById('wallet-wins');
+        if (winsEl) winsEl.textContent = data.wins || 0;
+        
+        const winningsEl = document.getElementById('wallet-total-winnings');
+        if (winningsEl) winningsEl.textContent = data.totalWinnings || 0;
+        
+        renderWalletHistory(data.history || []);
     } catch (error) {
         console.error('Error loading wallet:', error);
     }
