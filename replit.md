@@ -4,6 +4,16 @@
 Edele Bingo is a real-time Bingo game built as a Telegram Mini App with integrated payment system (deposits/withdrawals) and admin panel.
 
 ## Recent Changes (December 2024)
+- **Referral System Added** (Dec 13, 2025)
+  - Each user gets a unique referral code (e.g., ED + 6 chars + 2 digits)
+  - Referrer earns 2 ETB bonus when someone registers through their link
+  - Referral link displayed in Profile screen with copy button
+  - Database tables: referrals, users.referral_code, users.referrer_id
+- **Minimum Transaction Amounts** (Dec 13, 2025)
+  - Minimum deposit: 50 ETB
+  - Minimum withdrawal: 50 ETB
+  - Enforced in bot, API, and client-side validation
+- **Deposit Phone Number**: 0980682889
 - **Moved Deposit/Withdraw to Mini-App Wallet Tab** (Dec 13, 2025)
   - Removed Deposit and Withdraw buttons from Telegram bot keyboard
   - Added new Wallet tab in mini-app with modern UI
@@ -15,7 +25,7 @@ Edele Bingo is a real-time Bingo game built as a Telegram Mini App with integrat
 - Added Deposit system
 - Created Admin notification system for all transactions
 - Built Admin Panel web interface for transaction management
-- Added new database tables: deposits, withdrawals, admin_users
+- Added new database tables: deposits, withdrawals, admin_users, referrals
 
 ## Project Architecture
 
