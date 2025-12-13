@@ -425,7 +425,7 @@ bot.on('message', async (msg) => {
             userStates.set(telegramId, state);
             
             const paymentInfo = state.paymentMethod === 'telebirr' 
-                ? '📱 Telebirr: 0912345678' 
+                ? '📱 Telebirr: 0980682889' 
                 : '🏦 CBE: 1000123456789';
             
             await bot.sendMessage(chatId, 
