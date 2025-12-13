@@ -389,27 +389,8 @@ function initializeUser() {
 }
 
 async function loadWallet() {
-    if (!currentUserId) {
-        console.log('No user ID, skipping wallet load');
-        updateWalletDisplay(0);
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            updateWalletDisplay(data.balance);
-        } else {
-            updateWalletDisplay(data.balance || 0);
-        }
-        
-        console.log('Wallet loaded:', data);
-    } catch (error) {
-        console.error('Error loading wallet:', error);
-        updateWalletDisplay(0);
-    }
+    // Use loadWalletData for full wallet loading
+    return await loadWalletData();
 }
 
 function updateWalletDisplay(balance) {
@@ -1208,18 +1189,22 @@ function initializeWallet() {
 async function loadWalletData() {
     if (!currentUserId) {
         console.log('No user ID for wallet');
+        updateWalletDisplay(0);
         return;
     }
     
     try {
+        console.log('Fetching wallet data for user:', currentUserId);
         const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
         const data = await response.json();
         
-        const balanceEl = document.getElementById('wallet-balance');
-        if (balanceEl) balanceEl.textContent = parseFloat(data.balance || 0).toFixed(2);
+        console.log('Wallet API response:', data);
         
-        // Also update main wallet display
-        updateWalletDisplay(data.balance || 0);
+        // Get balance from response - ensure it's a number
+        const balance = parseFloat(data.balance) || 0;
+        
+        // Update all wallet displays using the centralized function
+        updateWalletDisplay(balance);
         
         const updatedEl = document.getElementById('wallet-updated');
         if (updatedEl) {
@@ -1234,11 +1219,14 @@ async function loadWalletData() {
         if (winsEl) winsEl.textContent = data.wins || 0;
         
         const winningsEl = document.getElementById('wallet-total-winnings');
-        if (winningsEl) winningsEl.textContent = data.totalWinnings || 0;
+        if (winningsEl) winningsEl.textContent = parseFloat(data.totalWinnings || 0).toFixed(0);
         
         renderWalletHistory(data.history || []);
+        
+        return data;
     } catch (error) {
         console.error('Error loading wallet:', error);
+        updateWalletDisplay(0);
     }
 }
 
