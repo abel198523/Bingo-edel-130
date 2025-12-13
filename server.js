@@ -63,13 +63,20 @@ const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 // Helper function to get main keyboard
 function getMainKeyboard(telegramId) {
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    
+    const keyboard = [
+        [{ text: "📱 Register", request_contact: true }]
+    ];
+    
+    if (miniAppUrlWithId) {
+        keyboard.push([{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }]);
+    }
+    
+    keyboard.push([{ text: "💰 Check Balance" }, { text: "💳 Deposit" }]);
+    keyboard.push([{ text: "💸 Withdraw" }]);
+    
     return {
-        keyboard: [
-            [{ text: "📱 Register", request_contact: true }],
-            [{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }],
-            [{ text: "💰 Check Balance" }, { text: "💳 Deposit" }],
-            [{ text: "💸 Withdraw" }]
-        ],
+        keyboard: keyboard,
         resize_keyboard: true
     };
 }
