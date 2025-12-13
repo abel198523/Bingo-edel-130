@@ -72,6 +72,38 @@ async function initializeDatabase() {
                 joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(game_id, user_id)
             );
+
+            CREATE TABLE IF NOT EXISTS deposits (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                amount DECIMAL(10, 2) NOT NULL,
+                payment_method VARCHAR(50) NOT NULL DEFAULT 'telebirr',
+                confirmation_code VARCHAR(100),
+                status VARCHAR(20) DEFAULT 'pending',
+                phone_number VARCHAR(20),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                confirmed_at TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS withdrawals (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                amount DECIMAL(10, 2) NOT NULL,
+                phone_number VARCHAR(20) NOT NULL,
+                account_name VARCHAR(100) DEFAULT '',
+                status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                processed_at TIMESTAMP,
+                admin_note TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS admin_users (
+                id SERIAL PRIMARY KEY,
+                telegram_id VARCHAR(100) UNIQUE NOT NULL,
+                username VARCHAR(50),
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
         console.log('Database tables initialized');
     } catch (err) {

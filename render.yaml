@@ -13,6 +13,14 @@ services:
         fromDatabase:
           name: chewatabingo-db
           property: connectionString
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_CHAT_ID
+        sync: false
+      - key: RENDER_SERVER_URL
+        sync: false
+      - key: MINI_APP_URL
+        sync: false
 
 databases:
   - name: chewatabingo-db
