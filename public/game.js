@@ -386,15 +386,63 @@ function renderPlayerCard(cardId) {
     });
 }
 
+function parseReferralCode(startParam) {
+    if (!startParam) return null;
+    if (startParam.startsWith('ref_')) {
+        return startParam.substring(4);
+    }
+    return startParam;
+}
+
+async function processReferral(telegramId, startParam, referralCode) {
+    try {
+        const response = await fetch('/api/referral/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId: telegramId,
+                startParam: startParam,
+                referralCode: referralCode
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            console.log('Referral processed:', data.message);
+            if (data.pending && data.referralCode) {
+                localStorage.setItem('referralCode', data.referralCode);
+            }
+        }
+        return data;
+    } catch (error) {
+        console.error('Error processing referral:', error);
+        return { success: false };
+    }
+}
+
 function initializeUser() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
+        let startParam = null;
+        let referralCode = null;
         
-        // Check for referral code in URL
+        // Check for referral code in URL parameter
         const refCode = urlParams.get('ref');
         if (refCode) {
+            referralCode = refCode;
             localStorage.setItem('referralCode', refCode);
-            console.log('Referral code saved:', refCode);
+            console.log('Referral code from URL saved:', refCode);
+        }
+        
+        // Check for startapp parameter (Mini App deep link format)
+        const startappParam = urlParams.get('startapp');
+        if (startappParam) {
+            startParam = startappParam;
+            const parsedRef = parseReferralCode(startappParam);
+            if (parsedRef) {
+                referralCode = parsedRef;
+                localStorage.setItem('referralCode', parsedRef);
+                console.log('Referral code from startapp saved:', parsedRef);
+            }
         }
         
         if (window.Telegram && window.Telegram.WebApp) {
@@ -402,14 +450,51 @@ function initializeUser() {
             tg.ready();
             tg.expand();
             
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-                currentUserId = tg.initDataUnsafe.user.id;
-                console.log('Telegram user ID:', currentUserId);
+            // Parse start_param from Telegram WebApp initDataUnsafe
+            if (tg.initDataUnsafe) {
+                // Get start_param (this is how Telegram passes the startapp parameter)
+                if (tg.initDataUnsafe.start_param) {
+                    startParam = tg.initDataUnsafe.start_param;
+                    const parsedRef = parseReferralCode(startParam);
+                    if (parsedRef) {
+                        referralCode = parsedRef;
+                        localStorage.setItem('referralCode', parsedRef);
+                        console.log('Referral code from Telegram start_param:', parsedRef);
+                    }
+                }
+                
+                // Get user ID
+                if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                    currentUserId = tg.initDataUnsafe.user.id;
+                    console.log('Telegram user ID:', currentUserId);
+                    
+                    // Process referral if we have a start_param or referral code
+                    if (startParam || referralCode) {
+                        processReferral(currentUserId, startParam, referralCode);
+                    }
+                } else {
+                    const tgId = urlParams.get('tg_id');
+                    if (tgId) {
+                        currentUserId = parseInt(tgId);
+                        console.log('Telegram ID from URL:', currentUserId);
+                        
+                        if (startParam || referralCode) {
+                            processReferral(currentUserId, startParam, referralCode);
+                        }
+                    } else {
+                        currentUserId = null;
+                        console.log('No Telegram user ID available');
+                    }
+                }
             } else {
                 const tgId = urlParams.get('tg_id');
                 if (tgId) {
                     currentUserId = parseInt(tgId);
                     console.log('Telegram ID from URL:', currentUserId);
+                    
+                    if (startParam || referralCode) {
+                        processReferral(currentUserId, startParam, referralCode);
+                    }
                 } else {
                     currentUserId = null;
                     console.log('No Telegram user ID available');
@@ -420,6 +505,10 @@ function initializeUser() {
             if (tgId) {
                 currentUserId = parseInt(tgId);
                 console.log('Telegram ID from URL:', currentUserId);
+                
+                if (startParam || referralCode) {
+                    processReferral(currentUserId, startParam, referralCode);
+                }
             } else {
                 currentUserId = null;
                 console.log('Telegram WebApp not available');

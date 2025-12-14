@@ -21,6 +21,8 @@ services:
         sync: false
       - key: MINI_APP_URL
         sync: false
+      - key: MINI_APP_SHORT_NAME
+        sync: false
 
 databases:
   - name: chewatabingo-db
