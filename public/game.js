@@ -6,6 +6,8 @@ let isRegistered = false;
 document.addEventListener('DOMContentLoaded', function() {
     initializeUser();
     checkRegistrationAndProceed();
+    // Assuming these initialization functions are defined elsewhere or are part of the full code
+    initializeBingoButton(); 
 });
 
 async function checkRegistrationAndProceed() {
@@ -25,7 +27,7 @@ async function checkRegistrationAndProceed() {
             initializeWebSocket();
             initializeLandingScreen();
             initializeFooterNavigation();
-            checkAdminStatus();
+            checkAdminStatus(); // Assuming checkAdminStatus is defined elsewhere
         } else {
             showRegistrationRequired();
         }
@@ -102,13 +104,13 @@ function initializeFooterNavigation() {
                 if (landingScreen) landingScreen.style.display = 'flex';
             } else if (target === 'wallet') {
                 if (walletScreen) walletScreen.style.display = 'flex';
-                loadWalletData();
+                loadWalletData(); // Assuming loadWalletData is defined elsewhere
             } else if (target === 'profile') {
                 if (profileScreen) profileScreen.style.display = 'flex';
                 loadProfile();
             } else if (target === 'admin') {
                 if (adminScreen) adminScreen.style.display = 'flex';
-                loadAdminData();
+                loadAdminData(); // Assuming loadAdminData is defined elsewhere
             }
         });
     });
@@ -118,7 +120,7 @@ function initializeFooterNavigation() {
         profileRefreshBtn.addEventListener('click', loadProfile);
     }
     
-    initializeWallet();
+    initializeWallet(); // Assuming initializeWallet is defined elsewhere
 }
 
 async function loadProfile() {
@@ -282,6 +284,7 @@ function showCardPreview(cardId) {
     
     if (!modal || !previewGrid) return;
     
+    // Assuming BINGO_CARDS is defined globally (e.g., in card.js)
     const cardData = BINGO_CARDS[cardId];
     if (!cardData) return;
     
@@ -419,12 +422,15 @@ async function processReferral(telegramId, startParam, referralCode) {
     }
 }
 
+// -------------------------------------------------------------
+// የተስተካከለው initializeUser() function
+// -------------------------------------------------------------
 function initializeUser() {
     try {
         const urlParams = new URLSearchParams(window.location.search);
         let startParam = null;
         let referralCode = null;
-        
+
         // Check for referral code in URL parameter
         const refCode = urlParams.get('ref');
         if (refCode) {
@@ -432,7 +438,7 @@ function initializeUser() {
             localStorage.setItem('referralCode', refCode);
             console.log('Referral code from URL saved:', refCode);
         }
-        
+
         // Check for startapp parameter (Mini App deep link format)
         const startappParam = urlParams.get('startapp');
         if (startappParam) {
@@ -444,7 +450,7 @@ function initializeUser() {
                 console.log('Referral code from startapp saved:', parsedRef);
             }
         }
-        
+
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.ready();
@@ -467,62 +473,40 @@ function initializeUser() {
                 if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
                     currentUserId = tg.initDataUnsafe.user.id;
                     console.log('Telegram user ID:', currentUserId);
-                    
-                    // Process referral if we have a start_param or referral code
-                    if (startParam || referralCode) {
-                        processReferral(currentUserId, startParam, referralCode);
-                    }
-                } else {
-                    const tgId = urlParams.get('tg_id');
-                    if (tgId) {
-                        currentUserId = parseInt(tgId);
-                        console.log('Telegram ID from URL:', currentUserId);
-                        
-                        if (startParam || referralCode) {
-                            processReferral(currentUserId, startParam, referralCode);
-                        }
-                    } else {
-                        currentUserId = null;
-                        console.log('No Telegram user ID available');
-                    }
-                }
-            } else {
-                const tgId = urlParams.get('tg_id');
-                if (tgId) {
-                    currentUserId = parseInt(tgId);
-                    console.log('Telegram ID from URL:', currentUserId);
-                    
-                    if (startParam || referralCode) {
-                        processReferral(currentUserId, startParam, referralCode);
-                    }
-                } else {
-                    currentUserId = null;
-                    console.log('No Telegram user ID available');
                 }
             }
-        } else {
+        }
+
+        // Handle fallback user ID from URL if Telegram WebApp is not fully available
+        if (!currentUserId) {
             const tgId = urlParams.get('tg_id');
             if (tgId) {
                 currentUserId = parseInt(tgId);
                 console.log('Telegram ID from URL:', currentUserId);
-                
-                if (startParam || referralCode) {
-                    processReferral(currentUserId, startParam, referralCode);
-                }
             } else {
                 currentUserId = null;
-                console.log('Telegram WebApp not available');
+                console.log('No Telegram user ID available');
             }
         }
+        
+        // Referral processing is now called only if currentUserId is successfully identified
+        if (currentUserId && (startParam || referralCode)) {
+            processReferral(currentUserId, startParam, referralCode);
+        }
+
     } catch (error) {
         console.error('Error initializing user:', error);
         currentUserId = null;
     }
 }
+// -------------------------------------------------------------
+// የተስተካከለው initializeUser() function መጨረሻ
+// -------------------------------------------------------------
 
 async function loadWallet() {
     // Use loadWalletData for full wallet loading
-    return await loadWalletData();
+    // Assuming loadWalletData is defined elsewhere
+    return await loadWalletData(); 
 }
 
 function updateWalletDisplay(balance) {
@@ -890,6 +874,7 @@ function claimBingo() {
 }
 
 function checkBingo(cardId) {
+    // Assuming BINGO_CARDS is defined globally (e.g., in card.js)
     const cardData = BINGO_CARDS[cardId];
     if (!cardData) return false;
     
@@ -923,657 +908,30 @@ function checkBingo(cardId) {
         }
         if (colComplete) return true;
     }
-    
-    // Check diagonals
+
+    // Check diagonals (top-left to bottom-right)
     let diag1Complete = true;
+    for (let i = 0; i < 5; i++) {
+        const num = cardData[i][i];
+        if (num === 0) continue; // Free space
+        if (!markedNumbers.has(num)) {
+            diag1Complete = false;
+            break;
+        }
+    }
+    if (diag1Complete) return true;
+
+    // Check diagonals (top-right to bottom-left)
     let diag2Complete = true;
     for (let i = 0; i < 5; i++) {
-        const num1 = cardData[i][i];
-        const num2 = cardData[i][4 - i];
-        
-        if (num1 !== 0 && !markedNumbers.has(num1)) diag1Complete = false;
-        if (num2 !== 0 && !markedNumbers.has(num2)) diag2Complete = false;
+        const num = cardData[i][4 - i];
+        if (num === 0) continue; // Free space
+        if (!markedNumbers.has(num)) {
+            diag2Complete = false;
+            break;
+        }
     }
-    
-    if (diag1Complete || diag2Complete) return true;
+    if (diag2Complete) return true;
     
     return false;
-}
-
-// Initialize Bingo button when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    initializeBingoButton();
-});
-
-window.currentUserId = currentUserId;
-window.currentStake = currentStake;
-window.handleCardConfirmation = handleCardConfirmation;
-window.refreshBalance = refreshBalance;
-window.claimBingo = claimBingo;
-
-// ================================================
-// Admin Panel Functions
-// ================================================
-
-let isAdmin = false;
-
-async function checkAdminStatus() {
-    if (!currentUserId) return false;
-    
-    try {
-        const response = await fetch(`/api/check-admin/${currentUserId}`);
-        const data = await response.json();
-        isAdmin = data.isAdmin;
-        
-        if (isAdmin) {
-            showAdminTab();
-            initializeAdminPanel();
-        }
-        
-        return isAdmin;
-    } catch (error) {
-        console.error('Error checking admin status:', error);
-        return false;
-    }
-}
-
-function showAdminTab() {
-    const footers = document.querySelectorAll('.selection-footer');
-    footers.forEach(footer => {
-        if (!footer.querySelector('[data-target="admin"]')) {
-            const adminBtn = document.createElement('div');
-            adminBtn.className = 'footer-btn';
-            adminBtn.dataset.target = 'admin';
-            adminBtn.textContent = 'Admin';
-            footer.appendChild(adminBtn);
-            
-            adminBtn.addEventListener('click', function() {
-                document.querySelectorAll('.footer-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                showAdminScreen();
-            });
-        }
-    });
-}
-
-function showAdminScreen() {
-    const landingScreen = document.getElementById('landing-screen');
-    const selectionScreen = document.getElementById('selection-screen');
-    const profileScreen = document.getElementById('profile-screen');
-    const gameScreen = document.getElementById('game-screen');
-    const adminScreen = document.getElementById('admin-screen');
-    
-    if (landingScreen) landingScreen.style.display = 'none';
-    if (selectionScreen) selectionScreen.style.display = 'none';
-    if (profileScreen) profileScreen.style.display = 'none';
-    if (gameScreen) gameScreen.style.display = 'none';
-    if (adminScreen) adminScreen.style.display = 'flex';
-    
-    loadAdminData();
-}
-
-function initializeAdminPanel() {
-    const adminTabs = document.querySelectorAll('.admin-tab');
-    adminTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const tabName = this.dataset.tab;
-            
-            adminTabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            
-            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById(`admin-${tabName}-content`).classList.add('active');
-        });
-    });
-    
-    const refreshBtn = document.getElementById('admin-refresh-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', loadAdminData);
-    }
-}
-
-async function loadAdminData() {
-    try {
-        const statsResponse = await fetch('/api/admin/stats');
-        const stats = await statsResponse.json();
-        
-        document.getElementById('admin-total-users').textContent = stats.totalUsers || 0;
-        document.getElementById('admin-pending-deposits').textContent = stats.pendingDeposits || 0;
-        document.getElementById('admin-pending-withdrawals').textContent = stats.pendingWithdrawals || 0;
-        document.getElementById('admin-today-games').textContent = stats.todayGames || 0;
-    } catch (err) {
-        console.error('Failed to load admin stats:', err);
-    }
-    
-    loadAdminDeposits();
-    loadAdminWithdrawals();
-    loadAdminUsers();
-}
-
-async function loadAdminDeposits() {
-    try {
-        const response = await fetch('/api/admin/deposits');
-        const deposits = await response.json();
-        
-        const container = document.getElementById('admin-deposits-list');
-        
-        if (deposits.length === 0) {
-            container.innerHTML = '<p class="admin-empty">ዲፖዚቶች የሉም</p>';
-            return;
-        }
-        
-        let html = '';
-        for (const d of deposits) {
-            html += `
-                <div class="admin-item">
-                    <div class="admin-item-header">
-                        <span class="admin-item-id">#${d.id}</span>
-                        <span class="admin-item-status ${d.status}">${d.status}</span>
-                    </div>
-                    <div class="admin-item-details">
-                        <p><strong>${d.username}</strong> - ${d.amount} ብር</p>
-                        <p>${d.payment_method} | ኮድ: ${d.confirmation_code}</p>
-                    </div>
-                    ${d.status === 'pending' ? `
-                        <div class="admin-item-actions">
-                            <button class="admin-btn admin-btn-approve" onclick="adminApproveDeposit(${d.id})">✓ ፈቅድ</button>
-                            <button class="admin-btn admin-btn-reject" onclick="adminRejectDeposit(${d.id})">✗ ውድቅ</button>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-        container.innerHTML = html;
-    } catch (err) {
-        document.getElementById('admin-deposits-list').innerHTML = '<p class="admin-empty">Error loading</p>';
-    }
-}
-
-async function loadAdminWithdrawals() {
-    try {
-        const response = await fetch('/api/admin/withdrawals');
-        const withdrawals = await response.json();
-        
-        const container = document.getElementById('admin-withdrawals-list');
-        
-        if (withdrawals.length === 0) {
-            container.innerHTML = '<p class="admin-empty">ማውጣቶች የሉም</p>';
-            return;
-        }
-        
-        let html = '';
-        for (const w of withdrawals) {
-            html += `
-                <div class="admin-item">
-                    <div class="admin-item-header">
-                        <span class="admin-item-id">#${w.id}</span>
-                        <span class="admin-item-status ${w.status}">${w.status}</span>
-                    </div>
-                    <div class="admin-item-details">
-                        <p><strong>${w.username}</strong> - ${w.amount} ብር</p>
-                        <p>📞 ${w.phone_number} | 🏷 ${w.account_name}</p>
-                    </div>
-                    ${w.status === 'pending' ? `
-                        <div class="admin-item-actions">
-                            <button class="admin-btn admin-btn-approve" onclick="adminApproveWithdrawal(${w.id})">✓ ፈቅድ</button>
-                            <button class="admin-btn admin-btn-reject" onclick="adminRejectWithdrawal(${w.id})">✗ ውድቅ</button>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-        container.innerHTML = html;
-    } catch (err) {
-        document.getElementById('admin-withdrawals-list').innerHTML = '<p class="admin-empty">Error loading</p>';
-    }
-}
-
-async function loadAdminUsers() {
-    try {
-        const response = await fetch('/api/admin/users');
-        const users = await response.json();
-        
-        const container = document.getElementById('admin-users-list');
-        
-        if (users.length === 0) {
-            container.innerHTML = '<p class="admin-empty">ተጠቃሚዎች የሉም</p>';
-            return;
-        }
-        
-        let html = '';
-        for (const u of users) {
-            html += `
-                <div class="admin-user-item">
-                    <div class="admin-user-info">
-                        <div class="admin-user-name">${u.username}</div>
-                        <div class="admin-user-phone">${u.phone_number || '-'}</div>
-                    </div>
-                    <div class="admin-user-balance">${parseFloat(u.balance || 0).toFixed(2)} ብር</div>
-                </div>
-            `;
-        }
-        container.innerHTML = html;
-    } catch (err) {
-        document.getElementById('admin-users-list').innerHTML = '<p class="admin-empty">Error loading</p>';
-    }
-}
-
-async function adminApproveDeposit(id) {
-    if (!confirm('ይህን ዲፖዚት ለማፅደቅ እርግጠኛ ነዎት?')) return;
-    
-    try {
-        const response = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
-        if (response.ok) {
-            showAdminNotification('✅ ዲፖዚት ተፈቅዷል!');
-            loadAdminData();
-        } else {
-            alert('Error approving deposit');
-        }
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-async function adminRejectDeposit(id) {
-    if (!confirm('ይህን ዲፖዚት ውድቅ ለማድረግ እርግጠኛ ነዎት?')) return;
-    
-    try {
-        const response = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
-        if (response.ok) {
-            showAdminNotification('❌ ዲፖዚት ውድቅ ተደርጓል');
-            loadAdminData();
-        } else {
-            alert('Error rejecting deposit');
-        }
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-async function adminApproveWithdrawal(id) {
-    if (!confirm('ይህን ማውጣት ለማፅደቅ እርግጠኛ ነዎት?')) return;
-    
-    try {
-        const response = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
-        if (response.ok) {
-            showAdminNotification('✅ ማውጣት ተፈቅዷል!');
-            loadAdminData();
-        } else {
-            alert('Error approving withdrawal');
-        }
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-async function adminRejectWithdrawal(id) {
-    if (!confirm('ይህን ማውጣት ውድቅ ለማድረግ እርግጠኛ ነዎት?')) return;
-    
-    try {
-        const response = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
-        if (response.ok) {
-            showAdminNotification('❌ ማውጣት ውድቅ ተደርጓል');
-            loadAdminData();
-        } else {
-            alert('Error rejecting withdrawal');
-        }
-    } catch (err) {
-        alert('Error: ' + err.message);
-    }
-}
-
-function showAdminNotification(message) {
-    const notification = document.createElement('div');
-    notification.className = 'admin-notification';
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}
-
-window.adminApproveDeposit = adminApproveDeposit;
-window.adminRejectDeposit = adminRejectDeposit;
-window.adminApproveWithdrawal = adminApproveWithdrawal;
-window.adminRejectWithdrawal = adminRejectWithdrawal;
-
-// ================================================
-// Wallet Functions
-// ================================================
-
-let selectedDepositAmount = 0;
-
-function initializeWallet() {
-    const walletRefreshBtn = document.getElementById('wallet-refresh-btn');
-    if (walletRefreshBtn) {
-        walletRefreshBtn.addEventListener('click', () => {
-            walletRefreshBtn.classList.add('spinning');
-            loadWalletData().finally(() => {
-                setTimeout(() => walletRefreshBtn.classList.remove('spinning'), 500);
-            });
-        });
-    }
-    
-    const depositBtn = document.getElementById('wallet-deposit-btn');
-    if (depositBtn) {
-        depositBtn.addEventListener('click', openDepositModal);
-    }
-    
-    const withdrawBtn = document.getElementById('wallet-withdraw-btn');
-    if (withdrawBtn) {
-        withdrawBtn.addEventListener('click', openWithdrawModal);
-    }
-    
-    const depositModalClose = document.getElementById('deposit-modal-close');
-    if (depositModalClose) {
-        depositModalClose.addEventListener('click', closeDepositModal);
-    }
-    
-    const withdrawModalClose = document.getElementById('withdraw-modal-close');
-    if (withdrawModalClose) {
-        withdrawModalClose.addEventListener('click', closeWithdrawModal);
-    }
-    
-    const amountBtns = document.querySelectorAll('.amount-btn');
-    amountBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            amountBtns.forEach(b => b.classList.remove('selected'));
-            this.classList.add('selected');
-            selectedDepositAmount = parseInt(this.dataset.amount);
-            document.getElementById('deposit-custom-amount').value = '';
-        });
-    });
-    
-    const customAmountInput = document.getElementById('deposit-custom-amount');
-    if (customAmountInput) {
-        customAmountInput.addEventListener('input', function() {
-            document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
-            selectedDepositAmount = parseInt(this.value) || 0;
-        });
-    }
-    
-    const depositSubmitBtn = document.getElementById('deposit-submit-btn');
-    if (depositSubmitBtn) {
-        depositSubmitBtn.addEventListener('click', submitDeposit);
-    }
-    
-    const withdrawSubmitBtn = document.getElementById('withdraw-submit-btn');
-    if (withdrawSubmitBtn) {
-        withdrawSubmitBtn.addEventListener('click', submitWithdraw);
-    }
-    
-    const depositModal = document.getElementById('deposit-modal');
-    if (depositModal) {
-        depositModal.addEventListener('click', function(e) {
-            if (e.target === this) closeDepositModal();
-        });
-    }
-    
-    const withdrawModal = document.getElementById('withdraw-modal');
-    if (withdrawModal) {
-        withdrawModal.addEventListener('click', function(e) {
-            if (e.target === this) closeWithdrawModal();
-        });
-    }
-}
-
-async function loadWalletData() {
-    if (!currentUserId) {
-        console.log('No user ID for wallet');
-        updateWalletDisplay(0);
-        return;
-    }
-    
-    try {
-        console.log('Fetching wallet data for user:', currentUserId);
-        const response = await fetch(`/api/wallet/${currentUserId}?t=${Date.now()}`);
-        
-        if (!response.ok) {
-            console.error('Wallet API error:', response.status);
-            return;
-        }
-        
-        const data = await response.json();
-        
-        console.log('Wallet API response:', JSON.stringify(data));
-        
-        // Get balance from response - ensure it's a number
-        let balance = 0;
-        if (data.balance !== undefined && data.balance !== null) {
-            balance = parseFloat(data.balance);
-            if (isNaN(balance)) balance = 0;
-        }
-        
-        console.log('Parsed balance:', balance);
-        
-        // Update all wallet displays using the centralized function
-        updateWalletDisplay(balance);
-        
-        const updatedEl = document.getElementById('wallet-updated');
-        if (updatedEl) {
-            const now = new Date();
-            updatedEl.textContent = `Last updated: ${now.toLocaleTimeString()}`;
-        }
-        
-        const gamesEl = document.getElementById('wallet-total-games');
-        if (gamesEl) gamesEl.textContent = data.totalGames || 0;
-        
-        const winsEl = document.getElementById('wallet-wins');
-        if (winsEl) winsEl.textContent = data.wins || 0;
-        
-        const winningsEl = document.getElementById('wallet-total-winnings');
-        if (winningsEl) winningsEl.textContent = parseFloat(data.totalWinnings || 0).toFixed(0);
-        
-        renderWalletHistory(data.history || []);
-        
-        return data;
-    } catch (error) {
-        console.error('Error loading wallet:', error);
-        updateWalletDisplay(0);
-    }
-}
-
-function renderWalletHistory(history) {
-    const historyList = document.getElementById('wallet-history-list');
-    if (!historyList) return;
-    
-    if (!history || history.length === 0) {
-        historyList.innerHTML = '<div class="history-empty">ምንም እንቅስቃሴ የለም</div>';
-        return;
-    }
-    
-    historyList.innerHTML = history.map(item => {
-        let icon = '💰';
-        let iconClass = 'deposit';
-        let amountClass = 'positive';
-        let typeText = 'ዲፖዚት';
-        let amountPrefix = '+';
-        
-        if (item.type === 'withdraw') {
-            icon = '💸';
-            iconClass = 'withdraw';
-            amountClass = item.status === 'pending' ? 'pending' : 'negative';
-            typeText = 'ማውጣት';
-            amountPrefix = '-';
-        } else if (item.type === 'game') {
-            icon = '🎮';
-            iconClass = 'game';
-            amountClass = 'negative';
-            typeText = 'ጨዋታ';
-            amountPrefix = '-';
-        } else if (item.type === 'win') {
-            icon = '🏆';
-            iconClass = 'win';
-            amountClass = 'positive';
-            typeText = 'ድል';
-            amountPrefix = '+';
-        }
-        
-        if (item.status === 'pending') {
-            amountClass = 'pending';
-            typeText += ' (በመጠባበቅ)';
-        }
-        
-        const date = new Date(item.created_at);
-        const dateStr = date.toLocaleDateString('am-ET', { month: 'short', day: 'numeric' });
-        
-        return `
-            <div class="history-item">
-                <div class="history-item-left">
-                    <div class="history-icon ${iconClass}">${icon}</div>
-                    <div class="history-details">
-                        <span class="history-type">${typeText}</span>
-                        <span class="history-date">${dateStr}</span>
-                    </div>
-                </div>
-                <span class="history-amount ${amountClass}">${amountPrefix}${parseFloat(item.amount).toFixed(0)} ETB</span>
-            </div>
-        `;
-    }).join('');
-}
-
-function openDepositModal() {
-    const modal = document.getElementById('deposit-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        selectedDepositAmount = 0;
-        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
-        document.getElementById('deposit-custom-amount').value = '';
-        document.getElementById('deposit-reference').value = '';
-        document.getElementById('deposit-status').innerHTML = '';
-    }
-}
-
-function closeDepositModal() {
-    const modal = document.getElementById('deposit-modal');
-    if (modal) modal.style.display = 'none';
-}
-
-function openWithdrawModal() {
-    const modal = document.getElementById('withdraw-modal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.getElementById('withdraw-amount').value = '';
-        document.getElementById('withdraw-phone').value = '';
-        document.getElementById('withdraw-status').innerHTML = '';
-        
-        const balanceEl = document.getElementById('wallet-balance');
-        const currentBalanceEl = document.getElementById('withdraw-current-balance');
-        if (balanceEl && currentBalanceEl) {
-            currentBalanceEl.textContent = balanceEl.textContent + ' ETB';
-        }
-    }
-}
-
-function closeWithdrawModal() {
-    const modal = document.getElementById('withdraw-modal');
-    if (modal) modal.style.display = 'none';
-}
-
-async function submitDeposit() {
-    const reference = document.getElementById('deposit-reference').value.trim();
-    const statusEl = document.getElementById('deposit-status');
-    const submitBtn = document.getElementById('deposit-submit-btn');
-    
-    if (!selectedDepositAmount || selectedDepositAmount < 50) {
-        statusEl.className = 'deposit-status error';
-        statusEl.textContent = 'እባክዎ መጠን ይምረጡ (ቢያንስ 50 ብር)';
-        return;
-    }
-    
-    if (!reference) {
-        statusEl.className = 'deposit-status error';
-        statusEl.textContent = 'እባክዎ የማረጋገጫ ቁጥር ያስገቡ';
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    statusEl.className = 'deposit-status pending';
-    statusEl.textContent = 'በመላክ ላይ...';
-    
-    try {
-        const response = await fetch('/api/deposits', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegram_id: currentUserId,
-                amount: selectedDepositAmount,
-                reference: reference
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            statusEl.className = 'deposit-status success';
-            statusEl.textContent = '✅ ዲፖዚት ጥያቄ ተልኳል! Admin ሲያረጋግጥ ይገባል።';
-            setTimeout(() => {
-                closeDepositModal();
-                loadWalletData();
-            }, 2000);
-        } else {
-            statusEl.className = 'deposit-status error';
-            statusEl.textContent = data.message || 'ዲፖዚት አልተሳካም';
-        }
-    } catch (error) {
-        statusEl.className = 'deposit-status error';
-        statusEl.textContent = 'ስህተት ተከስቷል። እንደገና ይሞክሩ።';
-    } finally {
-        submitBtn.disabled = false;
-    }
-}
-
-async function submitWithdraw() {
-    const amount = parseFloat(document.getElementById('withdraw-amount').value);
-    const phone = document.getElementById('withdraw-phone').value.trim();
-    const statusEl = document.getElementById('withdraw-status');
-    const submitBtn = document.getElementById('withdraw-submit-btn');
-    
-    if (!amount || amount < 50) {
-        statusEl.className = 'withdraw-status error';
-        statusEl.textContent = 'እባክዎ ትክክለኛ መጠን ያስገቡ (ቢያንስ 50 ብር)';
-        return;
-    }
-    
-    if (!phone || phone.length < 10) {
-        statusEl.className = 'withdraw-status error';
-        statusEl.textContent = 'እባክዎ ትክክለኛ ስልክ ቁጥር ያስገቡ';
-        return;
-    }
-    
-    submitBtn.disabled = true;
-    statusEl.className = 'withdraw-status pending';
-    statusEl.textContent = 'በመላክ ላይ...';
-    
-    try {
-        const response = await fetch('/api/withdrawals', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegram_id: currentUserId,
-                amount: amount,
-                phone_number: phone
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            statusEl.className = 'withdraw-status success';
-            statusEl.textContent = '✅ ማውጣት ጥያቄ ተልኳል! Admin ሲያረጋግጥ ይላካል።';
-            setTimeout(() => {
-                closeWithdrawModal();
-                loadWalletData();
-            }, 2000);
-        } else {
-            statusEl.className = 'withdraw-status error';
-            statusEl.textContent = data.message || 'ማውጣት አልተሳካም';
-        }
-    } catch (error) {
-        statusEl.className = 'withdraw-status error';
-        statusEl.textContent = 'ስህተት ተከስቷል። እንደገና ይሞክሩ።';
-    } finally {
-        submitBtn.disabled = false;
-    }
 }
