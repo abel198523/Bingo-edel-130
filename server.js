@@ -30,36 +30,61 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // --- Telegram Bot Logic Added ---
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RENDER_SERVER_URL = process.env.RENDER_SERVER_URL;
-const MINI_APP_URL = process.env.MINI_APP_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
+const MINI_APP_URL = process.env.MINI_APP_URL || process.env.RENDER_SERVER_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
 
 let bot = null;
 let botUsername = null;
+let botUsernameReady = null;
 
 if (TELEGRAM_BOT_TOKEN) {
     bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
         polling: true
     });
 
-    bot.getMe().then((botInfo) => {
+    botUsernameReady = bot.getMe().then((botInfo) => {
         botUsername = botInfo.username;
         console.log("Bot running in Polling mode.");
         console.log("Bot username:", botInfo.username);
         console.log("Bot ID:", botInfo.id);
+        console.log(`Referral links will use: https://t.me/${botInfo.username}?start=CODE`);
         if (MINI_APP_URL) {
-            console.log(`Mini App URL: ${MINI_APP_URL}`);
+            console.log(`Mini App URL (fallback): ${MINI_APP_URL}`);
         }
+        return botInfo.username;
     }).catch((err) => {
         console.error("Failed to get bot info:", err.message);
+        return null;
     });
 } else {
     console.log("TELEGRAM_BOT_TOKEN not provided - Bot functionality disabled");
     console.log("Set TELEGRAM_BOT_TOKEN environment variable to enable the bot");
+    if (MINI_APP_URL) {
+        console.log(`Referral links will use: ${MINI_APP_URL}?ref=CODE`);
+    }
 }
 
 function generateReferralLink(referralCode) {
+    if (!referralCode) return null;
+    
     if (botUsername) {
         return `https://t.me/${botUsername}?start=${referralCode}`;
     } else if (MINI_APP_URL) {
+        return `${MINI_APP_URL}?ref=${referralCode}`;
+    }
+    return null;
+}
+
+async function generateReferralLinkAsync(referralCode) {
+    if (!referralCode) return null;
+    
+    if (botUsernameReady) {
+        const username = await botUsernameReady;
+        if (username) {
+            return `https://t.me/${username}?start=${referralCode}`;
+        }
+    }
+    
+    if (MINI_APP_URL) {
         return `${MINI_APP_URL}?ref=${referralCode}`;
     }
     return null;
@@ -1630,6 +1655,8 @@ app.get('/api/profile/:telegramId', async (req, res) => {
             [user.id]
         );
 
+        const referralLink = user.referral_code ? await generateReferralLinkAsync(user.referral_code) : null;
+        
         res.json({
             success: true,
             profile: {
@@ -1641,7 +1668,7 @@ app.get('/api/profile/:telegramId', async (req, res) => {
                 wins: parseInt(winsResult.rows[0].wins) || 0,
                 memberSince: user.created_at,
                 referralCode: user.referral_code || null,
-                referralLink: user.referral_code ? generateReferralLink(user.referral_code) : null
+                referralLink: referralLink
             }
         });
     } catch (err) {

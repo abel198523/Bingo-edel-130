@@ -157,23 +157,40 @@ async function loadProfile() {
             const winsEl = document.getElementById('profile-wins');
             if (winsEl) winsEl.textContent = profile.wins || 0;
             
-            // Display referral code
+            // Display referral code or link
             const referralCodeEl = document.getElementById('profile-referral-code');
-            if (referralCodeEl && profile.referralCode) {
-                referralCodeEl.textContent = profile.referralCode;
-            }
-            
-            // Set up copy button
             const copyBtn = document.getElementById('copy-referral-btn');
-            if (copyBtn && profile.referralLink) {
-                copyBtn.onclick = () => {
-                    navigator.clipboard.writeText(profile.referralLink).then(() => {
-                        copyBtn.textContent = 'ተኮፒዋል!';
-                        setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
-                    }).catch(() => {
-                        alert('ሊንኩ: ' + profile.referralLink);
-                    });
-                };
+            
+            if (profile.referralLink) {
+                // Show full referral link
+                if (referralCodeEl) {
+                    referralCodeEl.textContent = profile.referralLink;
+                }
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(profile.referralLink).then(() => {
+                            copyBtn.textContent = 'ተኮፒዋል!';
+                            setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
+                        }).catch(() => {
+                            alert('ሊንኩ: ' + profile.referralLink);
+                        });
+                    };
+                }
+            } else if (profile.referralCode) {
+                // Fallback to referral code only
+                if (referralCodeEl) {
+                    referralCodeEl.textContent = profile.referralCode;
+                }
+                if (copyBtn) {
+                    copyBtn.onclick = () => {
+                        navigator.clipboard.writeText(profile.referralCode).then(() => {
+                            copyBtn.textContent = 'ተኮፒዋል!';
+                            setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
+                        }).catch(() => {
+                            alert('ኮዱ: ' + profile.referralCode);
+                        });
+                    };
+                }
             }
         }
     } catch (error) {
