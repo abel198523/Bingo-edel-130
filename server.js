@@ -33,6 +33,7 @@ const RENDER_SERVER_URL = process.env.RENDER_SERVER_URL;
 const MINI_APP_URL = process.env.MINI_APP_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
 
 let bot = null;
+let botUsername = null;
 
 if (TELEGRAM_BOT_TOKEN) {
     bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
@@ -40,6 +41,7 @@ if (TELEGRAM_BOT_TOKEN) {
     });
 
     bot.getMe().then((botInfo) => {
+        botUsername = botInfo.username;
         console.log("Bot running in Polling mode.");
         console.log("Bot username:", botInfo.username);
         console.log("Bot ID:", botInfo.id);
@@ -52,6 +54,15 @@ if (TELEGRAM_BOT_TOKEN) {
 } else {
     console.log("TELEGRAM_BOT_TOKEN not provided - Bot functionality disabled");
     console.log("Set TELEGRAM_BOT_TOKEN environment variable to enable the bot");
+}
+
+function generateReferralLink(referralCode) {
+    if (botUsername) {
+        return `https://t.me/${botUsername}?start=${referralCode}`;
+    } else if (MINI_APP_URL) {
+        return `${MINI_APP_URL}?ref=${referralCode}`;
+    }
+    return null;
 }
 
 // User conversation state tracking
@@ -210,11 +221,19 @@ async function checkWithdrawEligibility(telegramId) {
 // Only setup bot handlers if bot is available
 if (bot) {
 
-// Handle the /start command
-bot.onText(/\/start/, async (msg) => {
+// Handle the /start command with referral code support
+bot.onText(/\/start(.*)/, async (msg, match) => {
     console.log('Received /start command from:', msg.from.id);
     const chatId = msg.chat.id;
     const telegramId = msg.from.id;
+    
+    // Extract referral code from start parameter (e.g., /start REFCODE)
+    const startParam = match[1] ? match[1].trim() : null;
+    if (startParam) {
+        console.log('Start parameter (referral code):', startParam);
+        // Store referral code in user state
+        userStates.set(telegramId, { referrerCode: startParam });
+    }
     
     // Check if user is already registered
     let isRegistered = false;
@@ -234,7 +253,13 @@ bot.onText(/\/start/, async (msg) => {
         });
     } else {
         // User is not registered or no Mini App URL - show Register button
-        bot.sendMessage(chatId, "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\nለመመዝገብ እና 10 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።", {
+        let welcomeMsg = "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\n";
+        if (startParam) {
+            welcomeMsg += "🎁 በሪፈራል ተጋብዘዋል!\n\n";
+        }
+        welcomeMsg += "ለመመዝገብ እና 10 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።";
+        
+        bot.sendMessage(chatId, welcomeMsg, {
             reply_markup: {
                 keyboard: [
                     [{ text: "📱 Register", request_contact: true }]
@@ -297,8 +322,8 @@ bot.on('contact', async (msg) => {
         
         let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
         
-        if (MINI_APP_URL) {
-            const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+        const referralLink = generateReferralLink(referralCode);
+        if (referralLink) {
             welcomeMessage += `🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\n`;
         } else {
             welcomeMessage += `🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\n`;
@@ -352,10 +377,10 @@ bot.onText(/🔗 ሪፈራል/, async (msg) => {
         
         if (result.rows.length > 0 && result.rows[0].referral_code) {
             const referralCode = result.rows[0].referral_code;
+            const referralLink = generateReferralLink(referralCode);
             
             let message;
-            if (MINI_APP_URL) {
-                const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+            if (referralLink) {
                 message = `🔗 <b>የእርስዎ ሪፈራል ሊንክ:</b>\n\n${referralLink}\n\n` +
                     `📋 ይህንን ሊንክ ለጓደኞችዎ ያጋሩ!\n` +
                     `🎁 አንድ ጓደኛ ሲመዘገብ 5 ብር ቦነስ ያገኛሉ!`;
@@ -1616,7 +1641,7 @@ app.get('/api/profile/:telegramId', async (req, res) => {
                 wins: parseInt(winsResult.rows[0].wins) || 0,
                 memberSince: user.created_at,
                 referralCode: user.referral_code || null,
-                referralLink: (user.referral_code && MINI_APP_URL) ? `${MINI_APP_URL}?ref=${user.referral_code}` : null
+                referralLink: user.referral_code ? generateReferralLink(user.referral_code) : null
             }
         });
     } catch (err) {
