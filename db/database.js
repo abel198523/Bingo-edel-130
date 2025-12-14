@@ -71,6 +71,7 @@ async function initializeDatabase() {
                 winning_card INTEGER,
                 called_numbers INTEGER[],
                 total_pot DECIMAL(10, 2) DEFAULT 0.00,
+                prize_amount DECIMAL(10, 2) DEFAULT 0.00,
                 started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 ended_at TIMESTAMP
             );
@@ -119,10 +120,11 @@ async function initializeDatabase() {
             );
         `);
         
-        // Add referral columns to existing users table if they don't exist
+        // Add missing columns to existing tables if they don't exist
         try {
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE`);
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referrer_id INTEGER REFERENCES users(id)`);
+            await client.query(`ALTER TABLE games ADD COLUMN IF NOT EXISTS prize_amount DECIMAL(10, 2) DEFAULT 0.00`);
         } catch (alterErr) {
             // Columns may already exist
         }

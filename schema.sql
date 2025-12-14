@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS games (
     winning_card INTEGER,
     called_numbers INTEGER[],
     total_pot DECIMAL(10, 2) DEFAULT 0.00,
+    prize_amount DECIMAL(10, 2) DEFAULT 0.00,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP
 );
