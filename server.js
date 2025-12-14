@@ -295,8 +295,18 @@ bot.on('contact', async (msg) => {
         
         console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
         
-        const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
-        bot.sendMessage(chatId, `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\nአሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`, {
+        let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
+        
+        if (MINI_APP_URL) {
+            const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+            welcomeMessage += `🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\n`;
+        } else {
+            welcomeMessage += `🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nጓደኞችዎን ይጋብዙ 5 ብር ቦነስ ያግኙ!\n\n`;
+        }
+        
+        welcomeMessage += `አሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`;
+        
+        bot.sendMessage(chatId, welcomeMessage, {
             reply_markup: getMainKeyboard(telegramId)
         });
         
@@ -342,12 +352,20 @@ bot.onText(/🔗 ሪፈራል/, async (msg) => {
         
         if (result.rows.length > 0 && result.rows[0].referral_code) {
             const referralCode = result.rows[0].referral_code;
-            const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
             
-            await bot.sendMessage(chatId, 
-                `🔗 <b>የእርስዎ ሪፈራል ሊንክ:</b>\n\n${referralLink}\n\n` +
-                `📋 ይህንን ሊንክ ለጓደኞችዎ ያጋሩ!\n` +
-                `🎁 አንድ ጓደኛ ሲመዘገብ 5 ብር ቦነስ ያገኛሉ!`,
+            let message;
+            if (MINI_APP_URL) {
+                const referralLink = `${MINI_APP_URL}?ref=${referralCode}`;
+                message = `🔗 <b>የእርስዎ ሪፈራል ሊንክ:</b>\n\n${referralLink}\n\n` +
+                    `📋 ይህንን ሊንክ ለጓደኞችዎ ያጋሩ!\n` +
+                    `🎁 አንድ ጓደኛ ሲመዘገብ 5 ብር ቦነስ ያገኛሉ!`;
+            } else {
+                message = `🔗 <b>የእርስዎ ሪፈራል ኮድ:</b>\n\n${referralCode}\n\n` +
+                    `📋 ይህንን ኮድ ለጓደኞችዎ ያጋሩ!\n` +
+                    `🎁 አንድ ጓደኛ ሲመዘገብ 5 ብር ቦነስ ያገኛሉ!`;
+            }
+            
+            await bot.sendMessage(chatId, message,
                 { parse_mode: 'HTML', reply_markup: getMainKeyboard(telegramId) }
             );
         } else {
@@ -1598,7 +1616,7 @@ app.get('/api/profile/:telegramId', async (req, res) => {
                 wins: parseInt(winsResult.rows[0].wins) || 0,
                 memberSince: user.created_at,
                 referralCode: user.referral_code || null,
-                referralLink: user.referral_code ? `${MINI_APP_URL}?ref=${user.referral_code}` : null
+                referralLink: (user.referral_code && MINI_APP_URL) ? `${MINI_APP_URL}?ref=${user.referral_code}` : null
             }
         });
     } catch (err) {
