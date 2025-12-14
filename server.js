@@ -1832,6 +1832,218 @@ app.get('/api/wallet/:userId', async (req, res) => {
         
         const result = await pool.query(
             `SELECT u.id, u.is_registered, COALESCE(w.balance, 0) as balance 
+// --- API Endpoints for Mini App ---
+
+// Process referral from Mini App start_param
+app.post('/api/referral/process', async (req, res) => {
+    try {
+        const { telegramId, referralCode, startParam } = req.body;
+        
+        if (!telegramId) {
+            return res.status(400).json({ success: false, message: 'Telegram ID is required' });
+        }
+        
+        const tgId = parseInt(telegramId);
+        const parsedReferralCode = parseReferralFromStartParam(startParam) || referralCode;
+        
+        // If no referral code provided, that's OK - just acknowledge and continue
+        if (!parsedReferralCode) {
+            return res.json({ success: true, message: 'No referral code provided', noReferrer: true });
+        }
+        
+        // Check if user already exists
+        const existingUser = await pool.query(
+            'SELECT id, referrer_id FROM users WHERE telegram_id = $1',
+            [tgId]
+        );
+        
+        if (existingUser.rows.length > 0) {
+            const user = existingUser.rows[0];
+            
+            // If user already has a referrer, acknowledge success (already processed)
+            if (user.referrer_id) {
+                return res.json({ success: true, message: 'Referral already processed', alreadyReferred: true });
+            }
+            
+            // Find referrer by referral code
+            const referrerResult = await pool.query(
+                'SELECT id FROM users WHERE referral_code = $1',
+                [parsedReferralCode]
+            );
+            
+            // If no referrer found, acknowledge gracefully (invalid code but not an error)
+            if (referrerResult.rows.length === 0) {
+                console.log(`Referral code not found: ${parsedReferralCode}`);
+                return res.json({ success: true, message: 'Referral code not found', noReferrer: true });
+            }
+            
+            const referrerId = referrerResult.rows[0].id;
+            
+            // Don't allow self-referral - acknowledge gracefully
+            if (referrerId === user.id) {
+                return res.json({ success: true, message: 'Self-referral not allowed', noReferrer: true });
+            }
+            
+            // Link user to referrer
+            await pool.query(
+                'UPDATE users SET referrer_id = $1 WHERE id = $2',
+                [referrerId, user.id]
+            );
+            
+            // Award referral bonus
+            await awardReferralBonus(referrerId, user.id);
+            
+            console.log(`Referral processed: User ${user.id} referred by ${referrerId} (code: ${parsedReferralCode})`);
+            return res.json({ success: true, message: 'Referral processed successfully', referred: true });
+        }
+        
+        // User doesn't exist yet - store referral code for later registration
+        return res.json({ 
+            success: true, 
+            message: 'Referral code saved for registration',
+            referralCode: parsedReferralCode,
+            pending: true
+        });
+    } catch (err) {
+        console.error('Referral process error:', err);
+        res.status(500).json({ success: false, message: 'Failed to process referral' });
+    }
+});
+
+// Get referral stats for a user (basic protection - only returns own stats)
+app.get('/api/referral/stats/:telegramId', async (req, res) => {
+    try {
+        const { telegramId } = req.params;
+        const tgId = parseInt(telegramId) || 0;
+        
+        // Basic validation - telegram ID must be a valid positive number
+        if (tgId <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid telegram ID' });
+        }
+        
+        const userResult = await pool.query(
+            'SELECT id, referral_code FROM users WHERE telegram_id = $1',
+            [tgId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        const referralCode = userResult.rows[0].referral_code;
+        
+        // Count referrals
+        const referralCount = await pool.query(
+            'SELECT COUNT(*) as count FROM users WHERE referrer_id = $1',
+            [userId]
+        );
+        
+        // Get total bonus earned
+        const bonusResult = await pool.query(
+            'SELECT COALESCE(SUM(bonus_amount), 0) as total FROM referrals WHERE referrer_id = $1 AND bonus_awarded = true',
+            [userId]
+        );
+        
+        // Generate referral link
+        const referralLink = await generateReferralLinkAsync(referralCode);
+        
+        res.json({
+            success: true,
+            stats: {
+                referralCode: referralCode,
+                referralLink: referralLink,
+                totalReferrals: parseInt(referralCount.rows[0].count) || 0,
+                totalBonusEarned: parseFloat(bonusResult.rows[0].total) || 0
+            }
+        });
+    } catch (err) {
+        console.error('Referral stats error:', err);
+        res.status(500).json({ success: false, message: 'Failed to get referral stats' });
+    }
+});
+
+app.get('/api/check-admin/:telegramId', async (req, res) => {
+    try {
+        const { telegramId } = req.params;
+        const tgId = telegramId.toString();
+        
+        const result = await pool.query(
+            'SELECT * FROM admin_users WHERE telegram_id = $1 AND is_active = true',
+            [tgId]
+        );
+
+        const isEnvAdmin = ADMIN_CHAT_ID && tgId === ADMIN_CHAT_ID.toString();
+
+        res.json({ isAdmin: result.rows.length > 0 || isEnvAdmin });
+    } catch (err) {
+        console.error('Check admin error:', err);
+        res.json({ isAdmin: false });
+    }
+});
+
+app.get('/api/profile/:telegramId', async (req, res) => {
+    try {
+        const { telegramId } = req.params;
+        const tgId = parseInt(telegramId) || 0;
+        
+        const userResult = await pool.query(
+            `SELECT u.id, u.username, u.telegram_id, u.phone_number, u.is_registered, u.created_at, u.referral_code, w.balance 
+             FROM users u 
+             LEFT JOIN wallets w ON u.id = w.user_id 
+             WHERE u.telegram_id = $1`,
+            [tgId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const user = userResult.rows[0];
+        
+        const gamesResult = await pool.query(
+            `SELECT COUNT(*) as total_games FROM game_participants WHERE user_id = $1`,
+            [user.id]
+        );
+        
+        const winsResult = await pool.query(
+            `SELECT COUNT(*) as wins FROM games WHERE winner_id = $1`,
+            [user.id]
+        );
+
+        // --- ሪፈራል ሊንክ የሚመነጭበት ቁልፍ ክፍል ---
+        const referralLink = user.referral_code ? await generateReferralLinkAsync(user.referral_code) : null;
+        // ----------------------------------------------
+        
+        res.json({
+            success: true,
+            profile: {
+                username: user.username || 'Player',
+                telegramId: user.telegram_id,
+                phoneNumber: user.phone_number || '---',
+                balance: parseFloat(user.balance) || 0,
+                totalGames: parseInt(gamesResult.rows[0].total_games) || 0,
+                wins: parseInt(winsResult.rows[0].wins) || 0,
+                memberSince: user.created_at,
+                referralCode: user.referral_code || null,
+                referralLink: referralLink // ✅ Referral Link ይላካል
+            }
+        });
+    } catch (err) {
+        console.error('Profile error:', err);
+        res.status(500).json({ success: false, message: 'Failed to load profile' });
+    }
+});
+
+app.get('/api/wallet/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const telegramId = parseInt(userId) || 0;
+        
+        console.log('Wallet API called for telegram_id:', telegramId);
+        
+        const result = await pool.query(
+            `SELECT u.id, u.is_registered, COALESCE(w.balance, 0) as balance 
              FROM users u 
              LEFT JOIN wallets w ON u.id = w.user_id 
              WHERE u.telegram_id = $1`,
