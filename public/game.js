@@ -4,11 +4,99 @@ let ws = null;
 let isRegistered = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeUser();
-    checkRegistrationAndProceed();
-    // Assuming these initialization functions are defined elsewhere or are part of the full code
+    initializeUserAndCheck();
     initializeBingoButton(); 
 });
+
+async function initializeUserAndCheck() {
+    await initializeUserAsync();
+    checkRegistrationAndProceed();
+}
+
+async function initializeUserAsync() {
+    return new Promise((resolve) => {
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        function tryInitialize() {
+            attempts++;
+            
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                let startParam = null;
+                let referralCode = null;
+
+                const refCode = urlParams.get('ref');
+                if (refCode) {
+                    referralCode = refCode;
+                    localStorage.setItem('referralCode', refCode);
+                }
+
+                const startappParam = urlParams.get('startapp');
+                if (startappParam) {
+                    startParam = startappParam;
+                    const parsedRef = parseReferralCode(startappParam);
+                    if (parsedRef) {
+                        referralCode = parsedRef;
+                        localStorage.setItem('referralCode', parsedRef);
+                    }
+                }
+
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+                    
+                    if (tg.initDataUnsafe) {
+                        if (tg.initDataUnsafe.start_param) {
+                            startParam = tg.initDataUnsafe.start_param;
+                            const parsedRef = parseReferralCode(startParam);
+                            if (parsedRef) {
+                                referralCode = parsedRef;
+                                localStorage.setItem('referralCode', parsedRef);
+                            }
+                        }
+                        
+                        if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                            currentUserId = tg.initDataUnsafe.user.id;
+                            console.log('Telegram user ID:', currentUserId);
+                        }
+                    }
+                }
+
+                if (!currentUserId) {
+                    const tgId = urlParams.get('tg_id');
+                    if (tgId) {
+                        currentUserId = parseInt(tgId);
+                        console.log('Telegram ID from URL:', currentUserId);
+                    }
+                }
+                
+                if (currentUserId) {
+                    if (startParam || referralCode) {
+                        processReferral(currentUserId, startParam, referralCode);
+                    }
+                    resolve();
+                } else if (attempts < maxAttempts) {
+                    console.log(`User ID not found, retry ${attempts}/${maxAttempts}...`);
+                    setTimeout(tryInitialize, 200);
+                } else {
+                    console.log('Max attempts reached, proceeding without user ID');
+                    resolve();
+                }
+            } catch (error) {
+                console.error('Error initializing user:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(tryInitialize, 200);
+                } else {
+                    resolve();
+                }
+            }
+        }
+        
+        tryInitialize();
+    });
+}
 
 async function checkRegistrationAndProceed() {
     if (!currentUserId) {
@@ -422,86 +510,6 @@ async function processReferral(telegramId, startParam, referralCode) {
     }
 }
 
-// -------------------------------------------------------------
-// የተስተካከለው initializeUser() function
-// -------------------------------------------------------------
-function initializeUser() {
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        let startParam = null;
-        let referralCode = null;
-
-        // Check for referral code in URL parameter
-        const refCode = urlParams.get('ref');
-        if (refCode) {
-            referralCode = refCode;
-            localStorage.setItem('referralCode', refCode);
-            console.log('Referral code from URL saved:', refCode);
-        }
-
-        // Check for startapp parameter (Mini App deep link format)
-        const startappParam = urlParams.get('startapp');
-        if (startappParam) {
-            startParam = startappParam;
-            const parsedRef = parseReferralCode(startappParam);
-            if (parsedRef) {
-                referralCode = parsedRef;
-                localStorage.setItem('referralCode', parsedRef);
-                console.log('Referral code from startapp saved:', parsedRef);
-            }
-        }
-
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            
-            // Parse start_param from Telegram WebApp initDataUnsafe
-            if (tg.initDataUnsafe) {
-                // Get start_param (this is how Telegram passes the startapp parameter)
-                if (tg.initDataUnsafe.start_param) {
-                    startParam = tg.initDataUnsafe.start_param;
-                    const parsedRef = parseReferralCode(startParam);
-                    if (parsedRef) {
-                        referralCode = parsedRef;
-                        localStorage.setItem('referralCode', parsedRef);
-                        console.log('Referral code from Telegram start_param:', parsedRef);
-                    }
-                }
-                
-                // Get user ID
-                if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-                    currentUserId = tg.initDataUnsafe.user.id;
-                    console.log('Telegram user ID:', currentUserId);
-                }
-            }
-        }
-
-        // Handle fallback user ID from URL if Telegram WebApp is not fully available
-        if (!currentUserId) {
-            const tgId = urlParams.get('tg_id');
-            if (tgId) {
-                currentUserId = parseInt(tgId);
-                console.log('Telegram ID from URL:', currentUserId);
-            } else {
-                currentUserId = null;
-                console.log('No Telegram user ID available');
-            }
-        }
-        
-        // Referral processing is now called only if currentUserId is successfully identified
-        if (currentUserId && (startParam || referralCode)) {
-            processReferral(currentUserId, startParam, referralCode);
-        }
-
-    } catch (error) {
-        console.error('Error initializing user:', error);
-        currentUserId = null;
-    }
-}
-// -------------------------------------------------------------
-// የተስተካከለው initializeUser() function መጨረሻ
-// -------------------------------------------------------------
 
 async function loadWallet() {
     // Use loadWalletData for full wallet loading
