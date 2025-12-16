@@ -16,7 +16,7 @@ async function initializeUserAndCheck() {
 async function initializeUserAsync() {
     return new Promise((resolve) => {
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 5;
         
         function tryInitialize() {
             attempts++;
@@ -42,7 +42,15 @@ async function initializeUserAsync() {
                     }
                 }
 
-                if (window.Telegram && window.Telegram.WebApp) {
+                // PRIORITY 1: Check URL parameter first (most reliable from bot)
+                const tgIdFromUrl = urlParams.get('tg_id');
+                if (tgIdFromUrl) {
+                    currentUserId = parseInt(tgIdFromUrl);
+                    console.log('Telegram ID from URL:', currentUserId);
+                }
+
+                // PRIORITY 2: Try Telegram WebApp if URL param not found
+                if (!currentUserId && window.Telegram && window.Telegram.WebApp) {
                     const tg = window.Telegram.WebApp;
                     tg.ready();
                     tg.expand();
@@ -59,27 +67,35 @@ async function initializeUserAsync() {
                         
                         if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
                             currentUserId = tg.initDataUnsafe.user.id;
-                            console.log('Telegram user ID:', currentUserId);
+                            console.log('Telegram user ID from WebApp:', currentUserId);
                         }
                     }
-                }
-
-                if (!currentUserId) {
-                    const tgId = urlParams.get('tg_id');
-                    if (tgId) {
-                        currentUserId = parseInt(tgId);
-                        console.log('Telegram ID from URL:', currentUserId);
+                } else if (window.Telegram && window.Telegram.WebApp) {
+                    // Just initialize Telegram WebApp for styling even if we have user ID
+                    const tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.expand();
+                    
+                    // Check for start_param for referral
+                    if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+                        startParam = tg.initDataUnsafe.start_param;
+                        const parsedRef = parseReferralCode(startParam);
+                        if (parsedRef) {
+                            referralCode = parsedRef;
+                            localStorage.setItem('referralCode', parsedRef);
+                        }
                     }
                 }
                 
                 if (currentUserId) {
+                    console.log('User initialized successfully:', currentUserId);
                     if (startParam || referralCode) {
                         processReferral(currentUserId, startParam, referralCode);
                     }
                     resolve();
                 } else if (attempts < maxAttempts) {
                     console.log(`User ID not found, retry ${attempts}/${maxAttempts}...`);
-                    setTimeout(tryInitialize, 200);
+                    setTimeout(tryInitialize, 300);
                 } else {
                     console.log('Max attempts reached, proceeding without user ID');
                     resolve();
@@ -87,7 +103,7 @@ async function initializeUserAsync() {
             } catch (error) {
                 console.error('Error initializing user:', error);
                 if (attempts < maxAttempts) {
-                    setTimeout(tryInitialize, 200);
+                    setTimeout(tryInitialize, 300);
                 } else {
                     resolve();
                 }
