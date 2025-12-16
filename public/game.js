@@ -22,6 +22,11 @@ async function initializeUserAsync() {
             attempts++;
             
             try {
+                // Debug: Log full URL and hash
+                console.log('Full URL:', window.location.href);
+                console.log('Search params:', window.location.search);
+                console.log('Hash:', window.location.hash);
+                
                 const urlParams = new URLSearchParams(window.location.search);
                 let startParam = null;
                 let referralCode = null;
@@ -42,18 +47,22 @@ async function initializeUserAsync() {
                     }
                 }
 
-                // PRIORITY 1: Check URL parameter first (most reliable from bot)
+                // PRIORITY 1: Check URL parameter first
                 const tgIdFromUrl = urlParams.get('tg_id');
                 if (tgIdFromUrl) {
                     currentUserId = parseInt(tgIdFromUrl);
                     console.log('Telegram ID from URL:', currentUserId);
                 }
 
-                // PRIORITY 2: Try Telegram WebApp if URL param not found
-                if (!currentUserId && window.Telegram && window.Telegram.WebApp) {
+                // PRIORITY 2: Try Telegram WebApp
+                if (window.Telegram && window.Telegram.WebApp) {
                     const tg = window.Telegram.WebApp;
                     tg.ready();
                     tg.expand();
+                    
+                    // Debug: Log all Telegram data
+                    console.log('Telegram initData:', tg.initData);
+                    console.log('Telegram initDataUnsafe:', JSON.stringify(tg.initDataUnsafe));
                     
                     if (tg.initDataUnsafe) {
                         if (tg.initDataUnsafe.start_param) {
@@ -65,24 +74,31 @@ async function initializeUserAsync() {
                             }
                         }
                         
-                        if (tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                        // Try to get user ID from Telegram WebApp
+                        if (!currentUserId && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
                             currentUserId = tg.initDataUnsafe.user.id;
                             console.log('Telegram user ID from WebApp:', currentUserId);
                         }
                     }
-                } else if (window.Telegram && window.Telegram.WebApp) {
-                    // Just initialize Telegram WebApp for styling even if we have user ID
-                    const tg = window.Telegram.WebApp;
-                    tg.ready();
-                    tg.expand();
                     
-                    // Check for start_param for referral
-                    if (tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
-                        startParam = tg.initDataUnsafe.start_param;
-                        const parsedRef = parseReferralCode(startParam);
-                        if (parsedRef) {
-                            referralCode = parsedRef;
-                            localStorage.setItem('referralCode', parsedRef);
+                    // PRIORITY 3: Parse hash for tgWebAppData
+                    if (!currentUserId && window.location.hash) {
+                        try {
+                            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                            const tgWebAppData = hashParams.get('tgWebAppData');
+                            if (tgWebAppData) {
+                                const webAppParams = new URLSearchParams(tgWebAppData);
+                                const userJson = webAppParams.get('user');
+                                if (userJson) {
+                                    const user = JSON.parse(decodeURIComponent(userJson));
+                                    if (user && user.id) {
+                                        currentUserId = user.id;
+                                        console.log('Telegram user ID from hash:', currentUserId);
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.log('Hash parse error:', e);
                         }
                     }
                 }
@@ -98,6 +114,7 @@ async function initializeUserAsync() {
                     setTimeout(tryInitialize, 300);
                 } else {
                     console.log('Max attempts reached, proceeding without user ID');
+                    console.log('Debug - window.Telegram:', window.Telegram ? 'exists' : 'missing');
                     resolve();
                 }
             } catch (error) {

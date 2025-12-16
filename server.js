@@ -1606,13 +1606,39 @@ app.get('/api/check-registration/:telegramId', async (req, res) => {
         const { telegramId } = req.params;
         const tgId = parseInt(telegramId) || 0;
         
+        if (!tgId || tgId <= 0) {
+            return res.json({ registered: false, error: 'Invalid telegram ID' });
+        }
+        
         const result = await pool.query(
             'SELECT id, is_registered FROM users WHERE telegram_id = $1',
             [tgId]
         );
 
         if (result.rows.length === 0) {
-            return res.json({ registered: false });
+            // Auto-register user if not found
+            console.log(`Auto-registering user with telegram_id: ${tgId}`);
+            
+            const username = `Player_${tgId}`;
+            const referralCode = `REF${tgId.toString(36).toUpperCase()}${Date.now().toString(36).slice(-4).toUpperCase()}`;
+            
+            const newUser = await pool.query(
+                `INSERT INTO users (telegram_id, username, is_registered, referral_code) 
+                 VALUES ($1, $2, TRUE, $3) RETURNING id`,
+                [tgId, username, referralCode]
+            );
+            
+            const newUserId = newUser.rows[0].id;
+            
+            // Create wallet with 10 ETB welcome bonus
+            await pool.query(
+                `INSERT INTO wallets (user_id, balance, currency) 
+                 VALUES ($1, 10.00, 'ETB')`,
+                [newUserId]
+            );
+            
+            console.log(`User auto-registered: ${tgId} with 10 ETB bonus`);
+            return res.json({ registered: true, autoRegistered: true });
         }
 
         res.json({ registered: result.rows[0].is_registered || false });
