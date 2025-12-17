@@ -555,9 +555,48 @@ async function processReferral(telegramId, startParam, referralCode) {
 
 
 async function loadWallet() {
-    // Use loadWalletData for full wallet loading
-    // Assuming loadWalletData is defined elsewhere
-    return await loadWalletData(); 
+    if (!currentUserId) return;
+    
+    try {
+        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            updateWalletDisplay(data.balance);
+        }
+    } catch (error) {
+        console.error('Error loading wallet:', error);
+    }
+}
+
+async function loadWalletData() {
+    return await loadWallet();
+}
+
+function initializeWallet() {
+    loadWallet();
+}
+
+function loadAdminData() {
+    console.log('Admin data loaded');
+}
+
+async function checkAdminStatus() {
+    if (!currentUserId) return;
+    
+    try {
+        const response = await fetch(`/api/admin/check/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.isAdmin) {
+            const adminTab = document.querySelector('[data-target="admin"]');
+            if (adminTab) {
+                adminTab.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.log('Admin check skipped');
+    }
 }
 
 function updateWalletDisplay(balance) {

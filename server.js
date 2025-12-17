@@ -30,7 +30,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // --- Telegram Bot Logic Added ---
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8570827233:AAE6NphfpzkDdK_Ed0eK7GL0A2ltiJHj1YM';
 const RENDER_SERVER_URL = process.env.RENDER_SERVER_URL;
-const MINI_APP_URL = process.env.MINI_APP_URL || process.env.RENDER_SERVER_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
+const rawMiniAppUrl = process.env.MINI_APP_URL || process.env.RENDER_SERVER_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
+const MINI_APP_URL = rawMiniAppUrl ? rawMiniAppUrl.replace(/\/+$/, '') : null;
 const MINI_APP_SHORT_NAME = process.env.MINI_APP_SHORT_NAME || 'chewatabingo';
 
 let bot = null;
@@ -39,7 +40,21 @@ let botUsernameReady = null;
 
 if (TELEGRAM_BOT_TOKEN) {
     bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
-        polling: true
+        polling: {
+            interval: 1000,
+            autoStart: true,
+            params: {
+                timeout: 10
+            }
+        }
+    });
+    
+    bot.on('polling_error', (error) => {
+        if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+            console.log('Polling conflict detected - another instance may be running. Will retry...');
+        } else {
+            console.error('Polling error:', error.message);
+        }
     });
 
     botUsernameReady = bot.getMe().then((botInfo) => {
