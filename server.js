@@ -28,7 +28,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // --- Telegram Bot Logic Added ---
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8570827233:AAE6NphfpzkDdK_Ed0eK7GL0A2ltiJHj1YM';
 const RENDER_SERVER_URL = process.env.RENDER_SERVER_URL;
 const MINI_APP_URL = process.env.MINI_APP_URL || process.env.RENDER_SERVER_URL || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS}` : null);
 const MINI_APP_SHORT_NAME = process.env.MINI_APP_SHORT_NAME || 'chewatabingo';
