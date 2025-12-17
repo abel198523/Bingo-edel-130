@@ -170,6 +170,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
 // Helper function to get main keyboard
 function getMainKeyboard(telegramId) {
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    console.log('Generated Mini App URL:', miniAppUrlWithId);
     
     const keyboard = [
         [{ text: "📱 Register", request_contact: true }]
