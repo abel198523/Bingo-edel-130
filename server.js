@@ -2367,3 +2367,21 @@ async function startServer() {
 }
 
 startServer();
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
+
+function gracefulShutdown() {
+    console.log('Shutting down gracefully...');
+    if (bot) {
+        bot.stopPolling();
+        console.log('Bot polling stopped');
+    }
+    server.close(() => {
+        console.log('Server closed');
+        pool.end(() => {
+            console.log('Database pool closed');
+            process.exit(0);
+        });
+    });
+}
