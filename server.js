@@ -286,11 +286,25 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     }
     
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    console.log('Start command - Mini App URL:', miniAppUrlWithId);
     
     if (isRegistered && miniAppUrlWithId) {
-        // User is registered - show full menu
-        bot.sendMessage(chatId, "እንኳን ደህና መጡ! ጨዋታውን ለመጀመር 'Play' የሚለውን ቁልፍ ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
-            reply_markup: getMainKeyboard(telegramId)
+        // User is registered - show inline keyboard for Play button to preserve query params
+        await bot.sendMessage(chatId, "እንኳን ደህና መጡ! ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "▶️ Play Game", web_app: { url: miniAppUrlWithId } }]
+                ]
+            }
+        });
+        // Also show the regular keyboard for other functions
+        await bot.sendMessage(chatId, "ሌሎች አማራጮች:", {
+            reply_markup: {
+                keyboard: [
+                    [{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]
+                ],
+                resize_keyboard: true
+            }
         });
     } else {
         // User is not registered or no Mini App URL - show Register button
