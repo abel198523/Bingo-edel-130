@@ -26,6 +26,7 @@ async function initializeUserAsync() {
                 console.log('Full URL:', window.location.href);
                 console.log('Search params:', window.location.search);
                 console.log('Hash:', window.location.hash);
+                console.log('Pathname:', window.location.pathname);
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 let startParam = null;
@@ -47,11 +48,20 @@ async function initializeUserAsync() {
                     }
                 }
 
-                // PRIORITY 1: Check URL parameter first
-                const tgIdFromUrl = urlParams.get('tg_id');
-                if (tgIdFromUrl) {
-                    currentUserId = parseInt(tgIdFromUrl);
-                    console.log('Telegram ID from URL:', currentUserId);
+                // PRIORITY 0: Check URL path for user ID (e.g., /user/123456789)
+                const pathMatch = window.location.pathname.match(/\/user\/(\d+)/);
+                if (pathMatch && pathMatch[1]) {
+                    currentUserId = parseInt(pathMatch[1]);
+                    console.log('Telegram ID from path:', currentUserId);
+                }
+
+                // PRIORITY 1: Check URL parameter (fallback)
+                if (!currentUserId) {
+                    const tgIdFromUrl = urlParams.get('tg_id');
+                    if (tgIdFromUrl) {
+                        currentUserId = parseInt(tgIdFromUrl);
+                        console.log('Telegram ID from URL param:', currentUserId);
+                    }
                 }
 
                 // PRIORITY 2: Try Telegram WebApp

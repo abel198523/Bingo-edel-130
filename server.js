@@ -169,7 +169,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
 
 // Helper function to get main keyboard
 function getMainKeyboard(telegramId) {
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
     console.log('Generated Mini App URL:', miniAppUrlWithId);
     
     const keyboard = [
@@ -285,7 +285,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         console.error('Error checking user:', err);
     }
     
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
+    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
     console.log('Start command - Mini App URL:', miniAppUrlWithId);
     
     if (isRegistered && miniAppUrlWithId) {
@@ -1527,6 +1527,12 @@ wss.on('connection', (ws) => {
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Route for path-based user ID (serves index.html for /user/:telegramId)
+app.get('/user/:telegramId', (req, res) => {
+    console.log('Serving Mini App for user:', req.params.telegramId);
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
