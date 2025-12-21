@@ -29,13 +29,13 @@ args = "Replit Static Server"
 name = "Replit Static Server"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python3 -m http.server 5000 --bind 0.0.0.0 --directory ./public"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[ports]]
 localPort = 5000

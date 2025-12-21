@@ -575,6 +575,97 @@ async function loadWalletData() {
 
 function initializeWallet() {
     loadWallet();
+    
+    // Deposit button
+    const depositBtn = document.getElementById('wallet-deposit-btn');
+    if (depositBtn) {
+        depositBtn.addEventListener('click', () => {
+            const depositModal = document.getElementById('deposit-modal');
+            if (depositModal) depositModal.style.display = 'flex';
+        });
+    }
+    
+    // Deposit modal close
+    const depositClose = document.getElementById('deposit-modal-close');
+    if (depositClose) {
+        depositClose.addEventListener('click', () => {
+            const depositModal = document.getElementById('deposit-modal');
+            if (depositModal) depositModal.style.display = 'none';
+        });
+    }
+    
+    // Amount buttons in deposit
+    const amountBtns = document.querySelectorAll('.amount-btn');
+    amountBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('deposit-custom-amount').value = this.dataset.amount;
+        });
+    });
+    
+    // Withdrawal button
+    const withdrawBtn = document.getElementById('wallet-withdraw-btn');
+    if (withdrawBtn) {
+        withdrawBtn.addEventListener('click', () => {
+            const withdrawModal = document.getElementById('withdraw-modal');
+            if (withdrawModal) withdrawModal.style.display = 'flex';
+        });
+    }
+    
+    // Withdraw modal close
+    const withdrawClose = document.getElementById('withdraw-modal-close');
+    if (withdrawClose) {
+        withdrawClose.addEventListener('click', () => {
+            const withdrawModal = document.getElementById('withdraw-modal');
+            if (withdrawModal) withdrawModal.style.display = 'none';
+        });
+    }
+    
+    // Refresh buttons
+    const walletRefresh = document.getElementById('wallet-refresh-btn');
+    if (walletRefresh) {
+        walletRefresh.addEventListener('click', loadWallet);
+    }
+    
+    // Deposit submit
+    const depositSubmit = document.getElementById('deposit-submit-btn');
+    if (depositSubmit) {
+        depositSubmit.addEventListener('click', async () => {
+            const amount = document.getElementById('deposit-custom-amount').value;
+            const reference = prompt('ከTelebirr እንግዲህ ምን ገደብ አሪ?') || '';
+            if (!amount || !reference) return alert('ሁለቱም ተራ አስፈላጊ!');
+            try {
+                const res = await fetch('/api/deposits', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), reference})
+                });
+                const data = await res.json();
+                alert(data.message || 'ጥያቄ ተላክ!');
+                document.getElementById('deposit-modal').style.display = 'none';
+            } catch(e) { alert('ስህተት!'); }
+        });
+    }
+    
+    // Withdraw submit
+    const withdrawSubmit = document.getElementById('withdraw-submit-btn');
+    if (withdrawSubmit) {
+        withdrawSubmit.addEventListener('click', async () => {
+            const amount = document.getElementById('withdraw-amount').value;
+            const phone = document.getElementById('withdraw-phone').value;
+            if (!amount || !phone) return alert('ሁለቱም ተራ አስፈላጊ!');
+            try {
+                const res = await fetch('/api/withdrawals', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), phone_number: phone})
+                });
+                const data = await res.json();
+                alert(data.message || 'ጥያቄ ተላክ!');
+                document.getElementById('withdraw-modal').style.display = 'none';
+                loadWallet();
+            } catch(e) { alert('ስህተት!'); }
+        });
+    }
 }
 
 function loadAdminData() {
