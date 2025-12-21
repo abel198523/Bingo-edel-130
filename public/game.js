@@ -641,8 +641,8 @@ function initializeWallet() {
     if (depositSubmit) {
         depositSubmit.addEventListener('click', async () => {
             const amount = document.getElementById('deposit-custom-amount').value;
-            const reference = prompt('Enter your Telebirr reference code:') || '';
-            if (!amount || !reference) return alert('ሁለቱም ተራ አስፈላጊ!');
+            const reference = document.getElementById('deposit-reference').value;
+            if (!amount || !reference) return alert('መጠን እና ማረጋገጫ ቁጥር ሁለቱም ተራ አስፈላጊ!');
             try {
                 const res = await fetch('/api/deposits', {
                     method: 'POST',
@@ -652,7 +652,9 @@ function initializeWallet() {
                 const data = await res.json();
                 alert(data.message || 'ጥያቄ ተላክ!');
                 document.getElementById('deposit-modal').style.display = 'none';
-            } catch(e) { alert('ስህተት!'); }
+                document.getElementById('deposit-reference').value = '';
+                document.getElementById('deposit-custom-amount').value = '';
+            } catch(e) { alert('ስህተት!'); console.error(e); }
         });
     }
     
