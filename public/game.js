@@ -676,7 +676,7 @@ async function checkAdminStatus() {
     if (!currentUserId) return;
     
     try {
-        const response = await fetch(`/api/admin/check/${currentUserId}`);
+        const response = await fetch(`/api/check-admin/${currentUserId}`);
         const data = await response.json();
         
         if (data.isAdmin) {
@@ -684,6 +684,8 @@ async function checkAdminStatus() {
             if (adminTab) {
                 adminTab.style.display = 'block';
             }
+            // Load admin data if tab is shown
+            loadAdminData();
         }
     } catch (error) {
         console.log('Admin check skipped');

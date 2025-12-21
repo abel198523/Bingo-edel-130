@@ -530,6 +530,38 @@ bot.onText(/🏦 CBE Birr/, async (msg) => {
     }
 });
 
+// Handle /setadmin command
+bot.onText(/\/setadmin\s+(\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const adminChatId = msg.from.id;
+    const telegramId = match[1];
+    
+    try {
+        // Check if sender is already an admin or has admin privileges
+        const isAdmin = ADMIN_CHAT_ID && adminChatId == ADMIN_CHAT_ID;
+        
+        if (!isAdmin) {
+            await bot.sendMessage(chatId, "❌ ይህ ትዕዛዝ ማስተዳደር መብት ያለባቸው ብቻ ነው!");
+            return;
+        }
+        
+        // Insert or update admin user
+        const result = await pool.query(
+            `INSERT INTO admin_users (telegram_id, username, is_active)
+             VALUES ($1, $2, true)
+             ON CONFLICT (telegram_id) DO UPDATE SET is_active = true
+             RETURNING id, telegram_id`,
+            [telegramId, `admin_${telegramId}`]
+        );
+        
+        await bot.sendMessage(chatId, `✅ ተጠቃሚ ${telegramId} እንደ አስተዳዳሪ ተወስኗል!`);
+        console.log(`Admin set: ${telegramId} by ${adminChatId}`);
+    } catch (error) {
+        console.error('Error setting admin:', error);
+        await bot.sendMessage(chatId, "❌ አስተዳዳሪን ማዘጋጀት ላይ ችግር ተፈጥሯል।");
+    }
+});
+
 // Handle Cancel
 bot.onText(/❌ ሰርዝ/, async (msg) => {
     const chatId = msg.chat.id;
