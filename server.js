@@ -1115,11 +1115,17 @@ function startGamePhase() {
     gameState.timeLeft = -1;
     initializeMasterNumbers();
     
+    const playerCount = getConfirmedPlayersCount();
+    const totalPot = gameState.stakeAmount * playerCount;
+    
     broadcast({
         type: 'phase_change',
         phase: 'game',
         timeLeft: -1,
-        players: getPlayersInfo()
+        players: getPlayersInfo(),
+        playerCount: playerCount,
+        totalPot: totalPot,
+        prizeAmount: Math.floor(totalPot * 0.8 * 100) / 100
     });
 }
 
@@ -1139,8 +1145,13 @@ async function startWinnerDisplay(winnerInfo) {
             );
             
             if (game && game.total_pot > 0) {
-                await Wallet.win(winnerInfo.userId, game.total_pot, currentGameId);
-                winnerInfo.prize = game.total_pot;
+                // Calculate prize with 20% house cut
+                const houseCutPercentage = 0.20; // 20% house cut
+                const prizeAmount = Math.floor(game.total_pot * (1 - houseCutPercentage) * 100) / 100;
+                await Wallet.win(winnerInfo.userId, prizeAmount, currentGameId);
+                winnerInfo.prize = prizeAmount;
+                winnerInfo.totalPot = game.total_pot;
+                winnerInfo.houseCut = game.total_pot - prizeAmount;
                 
                 // Send real-time balance update to the winner
                 const newBalance = await Wallet.getBalance(winnerInfo.userId);
@@ -1151,7 +1162,9 @@ async function startWinnerDisplay(winnerInfo) {
                             client.send(JSON.stringify({
                                 type: 'balance_update',
                                 balance: parseFloat(newBalance),
-                                prize: game.total_pot
+                                prize: winnerInfo.prize,
+                                totalPot: winnerInfo.totalPot,
+                                houseCut: winnerInfo.houseCut
                             }));
                         }
                     }

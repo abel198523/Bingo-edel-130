@@ -687,6 +687,12 @@ function handleWebSocketMessage(data) {
         case 'phase_change':
             console.log('Phase changed:', data.phase);
             updatePhaseDisplay(data.phase);
+            if (data.playerCount !== undefined) {
+                updatePlayerCountDisplay(data.playerCount);
+            }
+            if (data.prizeAmount !== undefined) {
+                updatePrizePoolDisplay(data.prizeAmount);
+            }
             handlePhaseChange(data);
             break;
         case 'number_called':
@@ -698,6 +704,12 @@ function handleWebSocketMessage(data) {
         case 'timer_update':
             updateTimerDisplay(data.timeLeft);
             updatePhaseDisplay(data.phase);
+            if (data.playerCount !== undefined) {
+                updatePlayerCountDisplay(data.playerCount);
+            }
+            if (data.prizeAmount !== undefined) {
+                updatePrizePoolDisplay(data.prizeAmount);
+            }
             break;
         case 'error':
             alert(data.error || 'ችግር ተፈጥሯል');
@@ -827,6 +839,20 @@ function updatePhaseDisplay(phase) {
         } else if (phase === 'winner') {
             phaseElement.textContent = 'አሸናፊ!';
         }
+    }
+}
+
+function updatePlayerCountDisplay(playerCount) {
+    const playerCountElement = document.getElementById('player-count');
+    if (playerCountElement) {
+        playerCountElement.textContent = playerCount;
+    }
+}
+
+function updatePrizePoolDisplay(prizeAmount) {
+    const prizePoolElement = document.getElementById('prize-pool');
+    if (prizePoolElement) {
+        prizePoolElement.textContent = Math.round(prizeAmount) + ' ብር';
     }
 }
 
