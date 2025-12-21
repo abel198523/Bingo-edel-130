@@ -2300,9 +2300,9 @@ app.post('/api/deposits', async (req, res) => {
 // Withdrawal request from mini-app
 app.post('/api/withdrawals', async (req, res) => {
     try {
-        const { telegram_id, amount, account_holder_name, phone_number } = req.body;
+        const { telegram_id, amount, account_name, phone_number } = req.body;
         
-        if (!telegram_id || !amount || !account_holder_name || !phone_number) {
+        if (!telegram_id || !amount || !account_name || !phone_number) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         
@@ -2340,8 +2340,8 @@ app.post('/api/withdrawals', async (req, res) => {
         
         // Insert withdrawal request
         const withdrawResult = await pool.query(
-            'INSERT INTO withdrawals (user_id, amount, account_holder_name, phone_number, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id',
-            [userId, amount, account_holder_name, phone_number, 'pending']
+            'INSERT INTO withdrawals (user_id, amount, account_name, phone_number, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id',
+            [userId, amount, account_name, phone_number, 'pending']
         );
         
         const withdrawalId = withdrawResult.rows[0].id;
@@ -2355,7 +2355,7 @@ app.post('/api/withdrawals', async (req, res) => {
         const adminMessage = `💸 <b>New Withdrawal Request</b>\n\n` +
             `👤 ተጠቃሚ: ${username}\n` +
             `💵 መጠን: ${amount} ብር\n` +
-            `👤 ስም: ${account_holder_name}\n` +
+            `👤 ስም: ${account_name}\n` +
             `📱 ስልክ: ${phone_number}\n` +
             `📅 ቀን: ${new Date().toLocaleString('am-ET')}`;
         
@@ -2763,7 +2763,7 @@ app.get('/api/admin/pending', async (req, res) => {
         `);
         
         const withdrawals = await pool.query(`
-            SELECT 'withdrawal' as type, w.id, w.user_id, w.amount, w.created_at, u.username, u.telegram_id, w.phone_number, w.account_holder_name
+            SELECT 'withdrawal' as type, w.id, w.user_id, w.amount, w.created_at, u.username, u.telegram_id, w.phone_number, w.account_name
             FROM withdrawals w 
             JOIN users u ON w.user_id = u.id 
             WHERE w.status = 'pending'
@@ -2800,7 +2800,7 @@ app.get('/api/user/withdrawals/:telegramId', async (req, res) => {
         }
         
         const withdrawals = await pool.query(`
-            SELECT id, amount, phone_number, status, created_at, account_holder_name
+            SELECT id, amount, phone_number, status, created_at, account_name
             FROM withdrawals
             WHERE user_id = $1
             ORDER BY created_at DESC
