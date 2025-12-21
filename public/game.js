@@ -715,18 +715,33 @@ function displayPendingDeposits(deposits) {
         return;
     }
     
-    container.innerHTML = deposits.map(d => `
-        <div class="admin-list-item">
+    container.innerHTML = '';
+    deposits.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'admin-list-item';
+        item.innerHTML = `
             <div class="admin-item-info">
                 <strong>${d.username}</strong> - ${d.amount} ብር
-                <div style="font-size: 0.9em; color: #aaa;">${d.payment_method} | ${d.confirmation_code}</div>
+                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">
+                    📱 ${d.payment_method} | ${d.confirmation_code}
+                </div>
             </div>
             <div class="admin-item-actions">
-                <button onclick="approveDeposit(${d.id})" class="admin-btn-approve">✓ ግበር</button>
-                <button onclick="rejectDeposit(${d.id})" class="admin-btn-reject">✗ ውድቅ</button>
+                <button class="admin-btn-approve" data-id="${d.id}" data-action="approve">✓ ግበር</button>
+                <button class="admin-btn-reject" data-id="${d.id}" data-action="reject">✗ ውድቅ</button>
             </div>
-        </div>
-    `).join('');
+        `;
+        
+        // Add event listeners
+        item.querySelector('.admin-btn-approve').addEventListener('click', async () => {
+            await approveDeposit(d.id);
+        });
+        item.querySelector('.admin-btn-reject').addEventListener('click', async () => {
+            await rejectDeposit(d.id);
+        });
+        
+        container.appendChild(item);
+    });
 }
 
 function displayPendingWithdrawals(withdrawals) {
@@ -738,47 +753,101 @@ function displayPendingWithdrawals(withdrawals) {
         return;
     }
     
-    container.innerHTML = withdrawals.map(w => `
-        <div class="admin-list-item">
+    container.innerHTML = '';
+    withdrawals.forEach(w => {
+        const item = document.createElement('div');
+        item.className = 'admin-list-item';
+        item.innerHTML = `
             <div class="admin-item-info">
                 <strong>${w.username}</strong> - ${w.amount} ብር
-                <div style="font-size: 0.9em; color: #aaa;">📱 ${w.phone_number}</div>
+                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">
+                    📱 ${w.phone_number}
+                </div>
             </div>
             <div class="admin-item-actions">
-                <button onclick="approveWithdrawal(${w.id})" class="admin-btn-approve">✓ ግበር</button>
-                <button onclick="rejectWithdrawal(${w.id})" class="admin-btn-reject">✗ ውድቅ</button>
-                <button onclick="openAddBalanceModal('${w.username}', ${w.telegram_id})" class="admin-btn-add">💰 ሕሳብ</button>
+                <button class="admin-btn-approve" data-id="${w.id}" data-action="approve">✓ ግበር</button>
+                <button class="admin-btn-reject" data-id="${w.id}" data-action="reject">✗ ውድቅ</button>
             </div>
-        </div>
-    `).join('');
+        `;
+        
+        // Add event listeners
+        item.querySelector('.admin-btn-approve').addEventListener('click', async () => {
+            await approveWithdrawal(w.id);
+        });
+        item.querySelector('.admin-btn-reject').addEventListener('click', async () => {
+            await rejectWithdrawal(w.id);
+        });
+        
+        container.appendChild(item);
+    });
 }
 
 async function approveDeposit(id) {
     try {
         const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
-        if(res.ok) { alert('✓ ተጸድቋል'); loadPendingItems(); }
-    } catch(e) { alert('Error!'); }
+        const data = await res.json();
+        if(res.ok) { 
+            alert('✓ ዲፖዚት ተጸድቋል'); 
+            loadAdminStats();
+            loadPendingItems(); 
+        } else {
+            alert('Error: ' + (data.error || 'Failed to approve'));
+        }
+    } catch(e) { 
+        console.error('Approve deposit error:', e);
+        alert('Network error!'); 
+    }
 }
 
 async function rejectDeposit(id) {
     try {
         const res = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
-        if(res.ok) { alert('✓ ውድቅ ተደረገ'); loadPendingItems(); }
-    } catch(e) { alert('Error!'); }
+        const data = await res.json();
+        if(res.ok) { 
+            alert('✓ ዲፖዚት ውድቅ ተደረገ'); 
+            loadAdminStats();
+            loadPendingItems(); 
+        } else {
+            alert('Error: ' + (data.error || 'Failed to reject'));
+        }
+    } catch(e) { 
+        console.error('Reject deposit error:', e);
+        alert('Network error!'); 
+    }
 }
 
 async function approveWithdrawal(id) {
     try {
         const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
-        if(res.ok) { alert('✓ ተጸድቋል'); loadPendingItems(); }
-    } catch(e) { alert('Error!'); }
+        const data = await res.json();
+        if(res.ok) { 
+            alert('✓ ማውጣት ተጸድቋል'); 
+            loadAdminStats();
+            loadPendingItems(); 
+        } else {
+            alert('Error: ' + (data.error || 'Failed to approve'));
+        }
+    } catch(e) { 
+        console.error('Approve withdrawal error:', e);
+        alert('Network error!'); 
+    }
 }
 
 async function rejectWithdrawal(id) {
     try {
         const res = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
-        if(res.ok) { alert('✓ ውድቅ ተደረገ'); loadPendingItems(); }
-    } catch(e) { alert('Error!'); }
+        const data = await res.json();
+        if(res.ok) { 
+            alert('✓ ማውጣት ውድቅ ተደረገ'); 
+            loadAdminStats();
+            loadPendingItems(); 
+        } else {
+            alert('Error: ' + (data.error || 'Failed to reject'));
+        }
+    } catch(e) { 
+        console.error('Reject withdrawal error:', e);
+        alert('Network error!'); 
+    }
 }
 
 function openAddBalanceModal(username, telegramId) {
