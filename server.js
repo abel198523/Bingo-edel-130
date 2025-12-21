@@ -1500,6 +1500,16 @@ async function gameLoop() {
 }
 
 wss.on('connection', (ws) => {
+    // Reject new connections if game is already in progress
+    if (gameState.phase !== 'selection') {
+        ws.send(JSON.stringify({
+            type: 'error',
+            error: 'ጨዋታ አስቀድሞ ተጀምሮ ነበር። ወደሚቀጥለው ጨዋታ ይሠብሩ'
+        }));
+        ws.close(1000, 'Game in progress');
+        return;
+    }
+    
     const playerId = ++playerIdCounter;
     const player = {
         id: playerId,
