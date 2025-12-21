@@ -1013,13 +1013,30 @@ bot.onText(/\/reject_withdraw (\d+)/, async (msg, match) => {
         
         const w = withdrawal.rows[0];
         
+        if (w.status !== 'pending') {
+            await bot.sendMessage(chatId, '❌ ይህ ማውጣት ቀድሞ ተሰርቷል።');
+            return;
+        }
+        
+        // Refund the amount back to user's balance
+        await pool.query(
+            'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2',
+            [w.amount, w.user_id]
+        );
+        
+        // Record refund transaction
+        await pool.query(
+            'INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+            [w.user_id, 'withdrawal_rejected_refund', w.amount, `Telegram rejection refund: ${w.amount} ETB`]
+        );
+        
         await pool.query('UPDATE withdrawals SET status = $1, processed_at = NOW() WHERE id = $2', ['rejected', withdrawalId]);
         
-        await bot.sendMessage(chatId, `❌ ማውጣት #${withdrawalId} ተቀባይነት አላገኘም።`);
+        await bot.sendMessage(chatId, `✅ ማውጣት #${withdrawalId} ተቀባይነት አላገኘም። ${w.amount} ብር ወደ ሒሳብ ወደ ተመለሰ።`);
         
         if (w.user_telegram_id) {
             await bot.sendMessage(w.user_telegram_id, 
-                `❌ የገንዘብ ማውጣት ጥያቄዎ ተቀባይነት አላገኘም።\n\nለበለጠ መረጃ እባክዎ ያግኙን።`
+                `❌ የገንዘብ ማውጣት ጥያቄዎ ተቀባይነት አላገኘም።\n\n💵 ${w.amount} ብር ወደ ሒሳብዎ ወደ ተመለሰ።\n\nለበለጠ መረጃ እባክዎ ያግኙን።`
             );
         }
     } catch (error) {
@@ -2401,11 +2418,27 @@ app.post('/api/admin/withdrawals/:id/reject', async (req, res) => {
         
         const w = withdrawal.rows[0];
         
+        if (w.status !== 'pending') {
+            return res.status(400).json({ error: 'Withdrawal already processed' });
+        }
+        
+        // Refund the amount back to user's balance
+        await pool.query(
+            'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2',
+            [w.amount, w.user_id]
+        );
+        
+        // Record refund transaction
+        await pool.query(
+            'INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+            [w.user_id, 'withdrawal_rejected_refund', w.amount, `Withdrawal rejection refund: ${w.amount} ETB`]
+        );
+        
         await pool.query('UPDATE withdrawals SET status = $1, processed_at = NOW() WHERE id = $2', ['rejected', withdrawalId]);
         
         if (w.user_telegram_id && bot) {
             bot.sendMessage(w.user_telegram_id, 
-                `❌ የገንዘብ ማውጣት ጥያቄዎ ተቀባይነት አላገኘም።\n\nለበለጠ መረጃ እባክዎ ያግኙን።`
+                `❌ የገንዘብ ማውጣት ጥያቄዎ ተቀባይነት አላገኘም።\n\n💵 ${w.amount} ብር ወደ ሒሳብዎ ወደ ተመለሰ።\n\nለበለጠ መረጃ እባክዎ ያግኙን።`
             ).catch(err => console.error('Telegram notify error:', err));
         }
         
