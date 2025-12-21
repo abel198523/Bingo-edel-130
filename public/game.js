@@ -387,6 +387,8 @@ function initializeLandingScreen() {
 let selectedCardId = null;
 let previewCardId = null;
 
+let takenCards = new Set();
+
 function generateCardSelection() {
     const grid = document.getElementById('card-selection-grid');
     if (!grid) return;
@@ -399,9 +401,17 @@ function generateCardSelection() {
         cardElement.dataset.cardId = cardId;
         cardElement.textContent = cardId;
         
-        cardElement.addEventListener('click', function() {
-            showCardPreview(cardId);
-        });
+        // Mark as taken if in takenCards set
+        if (takenCards.has(cardId)) {
+            cardElement.classList.add('taken');
+            cardElement.style.opacity = '0.5';
+            cardElement.style.cursor = 'not-allowed';
+            cardElement.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
+        } else {
+            cardElement.addEventListener('click', function() {
+                showCardPreview(cardId);
+            });
+        }
         
         grid.appendChild(cardElement);
     }
@@ -669,7 +679,138 @@ function initializeWallet() {
 }
 
 function loadAdminData() {
-    console.log('Admin data loaded');
+    loadAdminStats();
+    loadPendingItems();
+    setupAdminTabs();
+}
+
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/admin/stats');
+        const data = await response.json();
+        document.getElementById('admin-total-users').textContent = data.totalUsers || 0;
+        document.getElementById('admin-pending-deposits').textContent = data.pendingDeposits || 0;
+        document.getElementById('admin-pending-withdrawals').textContent = data.pendingWithdrawals || 0;
+        document.getElementById('admin-today-games').textContent = data.todayGames || 0;
+    } catch(e) { console.error('Failed to load admin stats:', e); }
+}
+
+async function loadPendingItems() {
+    try {
+        const response = await fetch('/api/admin/pending');
+        const data = await response.json();
+        displayPendingDeposits(data.deposits || []);
+        displayPendingWithdrawals(data.withdrawals || []);
+    } catch(e) { console.error('Failed to load pending items:', e); }
+}
+
+function displayPendingDeposits(deposits) {
+    const container = document.getElementById('admin-deposits-list');
+    if (!container) return;
+    
+    if (deposits.length === 0) {
+        container.innerHTML = '<p class="admin-empty">ምንም ጥያቄ የለም</p>';
+        return;
+    }
+    
+    container.innerHTML = deposits.map(d => `
+        <div class="admin-list-item">
+            <div class="admin-item-info">
+                <strong>${d.username}</strong> - ${d.amount} ብር
+                <div style="font-size: 0.9em; color: #aaa;">${d.payment_method} | ${d.confirmation_code}</div>
+            </div>
+            <div class="admin-item-actions">
+                <button onclick="approveDeposit(${d.id})" class="admin-btn-approve">✓ ግበር</button>
+                <button onclick="rejectDeposit(${d.id})" class="admin-btn-reject">✗ ውድቅ</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displayPendingWithdrawals(withdrawals) {
+    const container = document.getElementById('admin-withdrawals-list');
+    if (!container) return;
+    
+    if (withdrawals.length === 0) {
+        container.innerHTML = '<p class="admin-empty">ምንም ጥያቄ የለም</p>';
+        return;
+    }
+    
+    container.innerHTML = withdrawals.map(w => `
+        <div class="admin-list-item">
+            <div class="admin-item-info">
+                <strong>${w.username}</strong> - ${w.amount} ብር
+                <div style="font-size: 0.9em; color: #aaa;">📱 ${w.phone_number}</div>
+            </div>
+            <div class="admin-item-actions">
+                <button onclick="approveWithdrawal(${w.id})" class="admin-btn-approve">✓ ግበር</button>
+                <button onclick="rejectWithdrawal(${w.id})" class="admin-btn-reject">✗ ውድቅ</button>
+                <button onclick="openAddBalanceModal('${w.username}', ${w.telegram_id})" class="admin-btn-add">💰 ሕሳብ</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function approveDeposit(id) {
+    try {
+        const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
+        if(res.ok) { alert('✓ ተጸድቋል'); loadPendingItems(); }
+    } catch(e) { alert('Error!'); }
+}
+
+async function rejectDeposit(id) {
+    try {
+        const res = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
+        if(res.ok) { alert('✓ ውድቅ ተደረገ'); loadPendingItems(); }
+    } catch(e) { alert('Error!'); }
+}
+
+async function approveWithdrawal(id) {
+    try {
+        const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
+        if(res.ok) { alert('✓ ተጸድቋል'); loadPendingItems(); }
+    } catch(e) { alert('Error!'); }
+}
+
+async function rejectWithdrawal(id) {
+    try {
+        const res = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
+        if(res.ok) { alert('✓ ውድቅ ተደረገ'); loadPendingItems(); }
+    } catch(e) { alert('Error!'); }
+}
+
+function openAddBalanceModal(username, telegramId) {
+    const amount = prompt(`💰 ${username} ላይ መጠን ጨምር (ብር):`);
+    if(amount && !isNaN(amount) && amount > 0) {
+        addBalanceToUser(telegramId, parseFloat(amount));
+    }
+}
+
+async function addBalanceToUser(telegramId, amount) {
+    try {
+        const res = await fetch('/api/admin/add-balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegramId, amount })
+        });
+        const data = await res.json();
+        alert(data.message || 'Success!');
+        loadAdminStats();
+    } catch(e) { alert('Error!'); }
+}
+
+function setupAdminTabs() {
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(`admin-${this.dataset.tab}-content`).classList.add('active');
+        });
+    });
+    
+    const refreshBtn = document.getElementById('admin-refresh-btn');
+    if(refreshBtn) refreshBtn.addEventListener('click', loadAdminData);
 }
 
 async function checkAdminStatus() {

@@ -2394,6 +2394,87 @@ app.post('/api/admin/withdrawals/:id/reject', async (req, res) => {
     }
 });
 
+// Add balance to player by admin
+app.post('/api/admin/add-balance', async (req, res) => {
+    try {
+        const { telegramId, amount } = req.body;
+        
+        if (!telegramId || !amount || amount <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid input' });
+        }
+        
+        const userResult = await pool.query(
+            'SELECT id FROM users WHERE telegram_id = $1',
+            [parseInt(telegramId)]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        
+        // Ensure wallet exists
+        await pool.query(
+            'INSERT INTO wallets (user_id, balance) VALUES ($1, 0) ON CONFLICT (user_id) DO NOTHING',
+            [userId]
+        );
+        
+        // Add balance
+        await pool.query(
+            'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE user_id = $2',
+            [amount, userId]
+        );
+        
+        // Record transaction
+        await pool.query(
+            'INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+            [userId, 'admin_bonus', amount, `Admin added ${amount} ETB`]
+        );
+        
+        // Notify user via Telegram
+        if (bot) {
+            bot.sendMessage(parseInt(telegramId), 
+                `✅ አስተዳዳሪ ${amount} ብር ወደ ሒሳብዎ ጨምሯል!\n\n💰 አዲስ ሒሳብ ወደ እርስዎ ተላክ።`
+            ).catch(err => console.error('Telegram notify error:', err));
+        }
+        
+        res.json({ success: true, message: 'Balance added successfully' });
+    } catch (err) {
+        console.error('Add balance error:', err);
+        res.status(500).json({ success: false, message: 'Failed to add balance' });
+    }
+});
+
+// Get pending deposits and withdrawals only
+app.get('/api/admin/pending', async (req, res) => {
+    try {
+        const deposits = await pool.query(`
+            SELECT 'deposit' as type, d.id, d.user_id, d.amount, d.created_at, u.username, u.telegram_id, d.payment_method, d.confirmation_code
+            FROM deposits d 
+            JOIN users u ON d.user_id = u.id 
+            WHERE d.status = 'pending'
+            ORDER BY d.created_at DESC
+        `);
+        
+        const withdrawals = await pool.query(`
+            SELECT 'withdrawal' as type, w.id, w.user_id, w.amount, w.created_at, u.username, u.telegram_id, w.phone_number
+            FROM withdrawals w 
+            JOIN users u ON w.user_id = u.id 
+            WHERE w.status = 'pending'
+            ORDER BY w.created_at DESC
+        `);
+        
+        res.json({
+            deposits: deposits.rows,
+            withdrawals: withdrawals.rows
+        });
+    } catch (err) {
+        console.error('Pending items error:', err);
+        res.status(500).json({ error: 'Failed to fetch pending items' });
+    }
+});
+
 // ================== End Admin API Routes ==================
 
 const PORT = process.env.PORT || 5000;
