@@ -577,6 +577,9 @@ async function loadWallet() {
     } catch (error) {
         console.error('Error loading wallet:', error);
     }
+    
+    // Load pending withdrawals
+    loadUserWithdrawals();
 }
 
 async function loadWalletData() {
@@ -663,19 +666,27 @@ function initializeWallet() {
     if (withdrawSubmit) {
         withdrawSubmit.addEventListener('click', async () => {
             const amount = document.getElementById('withdraw-amount').value;
+            const name = document.getElementById('withdraw-name').value;
             const phone = document.getElementById('withdraw-phone').value;
-            if (!amount || !phone) return alert('ሁለቱም ተራ አስፈላጊ!');
+            if (!amount || !name || !phone) return alert('ሁሉም መስክ ተራ አስፈላጊ ነው!');
             try {
                 const res = await fetch('/api/withdrawals', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), phone_number: phone})
+                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), account_holder_name: name, phone_number: phone})
                 });
                 const data = await res.json();
-                alert(data.message || 'ጥያቄ ተላክ!');
-                document.getElementById('withdraw-modal').style.display = 'none';
-                loadWallet();
-            } catch(e) { alert('ስህተት!'); }
+                if(res.ok) {
+                    alert(data.message || 'ጥያቄ ተላክ! ገንዘቡ ወድቅ ሂሳብዎ ላይ ይቆይ ድረስ እንደገና ወሰድ።');
+                    document.getElementById('withdraw-modal').style.display = 'none';
+                    document.getElementById('withdraw-amount').value = '';
+                    document.getElementById('withdraw-name').value = '';
+                    document.getElementById('withdraw-phone').value = '';
+                    loadWallet();
+                } else {
+                    alert('ስህተት: ' + (data.message || 'ጥያቄ ወደገና ሞክር'));
+                }
+            } catch(e) { alert('ስህተት!'); console.error(e); }
         });
     }
 }
@@ -761,7 +772,7 @@ function displayPendingWithdrawals(withdrawals) {
             <div class="admin-item-info">
                 <strong>${w.username}</strong> - ${w.amount} ብር
                 <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">
-                    📱 ${w.phone_number}
+                    👤 ${w.account_holder_name} | 📱 ${w.phone_number}
                 </div>
             </div>
             <div class="admin-item-actions">
@@ -867,7 +878,64 @@ async function addBalanceToUser(telegramId, amount) {
         const data = await res.json();
         alert(data.message || 'Success!');
         loadAdminStats();
+        loadPendingItems();
     } catch(e) { alert('Error!'); }
+}
+
+// Get user's pending withdrawals
+async function loadUserWithdrawals() {
+    if (!currentUserId) return;
+    try {
+        const res = await fetch(`/api/user/withdrawals/${currentUserId}`);
+        const data = await res.json();
+        displayUserWithdrawals(data.withdrawals || []);
+    } catch(e) { console.error('Failed to load withdrawals:', e); }
+}
+
+function displayUserWithdrawals(withdrawals) {
+    const walletHistory = document.getElementById('wallet-history-list');
+    if (!walletHistory) return;
+    
+    const pending = withdrawals.filter(w => w.status === 'pending');
+    const processed = withdrawals.filter(w => w.status !== 'pending');
+    
+    let html = '';
+    
+    if (pending.length > 0) {
+        html += '<div class="pending-withdrawals">';
+        html += '<h4 style="color: #ffa500; margin-bottom: 10px;">⏳ የሚጠበቀው</h4>';
+        pending.forEach(w => {
+            html += `<div style="background: rgba(255,165,0,0.1); padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #ffa500;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>💸 ${w.amount} ብር</strong>
+                    <span style="font-size: 0.9em; color: #aaa;">${new Date(w.created_at).toLocaleDateString('am-ET')}</span>
+                </div>
+                <div style="font-size: 0.85em; color: #ccc; margin-top: 5px;">📱 ${w.phone_number}</div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    
+    if (processed.length > 0) {
+        html += '<div style="margin-top: 15px;">';
+        html += '<h4 style="margin-bottom: 10px;">አስተሳሰብ</h4>';
+        processed.forEach(w => {
+            const isApproved = w.status === 'approved';
+            html += `<div style="background: rgba(${isApproved ? '0,255,0,0.1' : '255,0,0,0.1'}); padding: 10px; margin: 5px 0; border-radius: 5px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <strong>${isApproved ? '✅' : '❌'} ${w.amount} ብር</strong>
+                    <span style="font-size: 0.9em; color: #aaa;">${new Date(w.created_at).toLocaleDateString('am-ET')}</span>
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+    }
+    
+    if (withdrawals.length === 0) {
+        html = '<div class="history-empty">ምንም ማውጣት የለም</div>';
+    }
+    
+    walletHistory.innerHTML = html;
 }
 
 function setupAdminTabs() {

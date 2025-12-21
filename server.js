@@ -2052,14 +2052,14 @@ app.post('/api/deposits', async (req, res) => {
 // Withdrawal request from mini-app
 app.post('/api/withdrawals', async (req, res) => {
     try {
-        const { telegram_id, amount, phone_number } = req.body;
+        const { telegram_id, amount, account_holder_name, phone_number } = req.body;
         
-        if (!telegram_id || !amount || !phone_number) {
+        if (!telegram_id || !amount || !account_holder_name || !phone_number) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         
         const userResult = await pool.query(
-            'SELECT u.id, w.balance FROM users u JOIN wallets w ON u.id = w.user_id WHERE u.telegram_id = $1',
+            'SELECT u.id, u.username, w.balance FROM users u JOIN wallets w ON u.id = w.user_id WHERE u.telegram_id = $1',
             [parseInt(telegram_id)]
         );
         
@@ -2068,6 +2068,7 @@ app.post('/api/withdrawals', async (req, res) => {
         }
         
         const userId = userResult.rows[0].id;
+        const username = userResult.rows[0].username || 'Unknown';
         const balance = parseFloat(userResult.rows[0].balance) || 0;
         
         if (balance < amount) {
@@ -2081,14 +2082,35 @@ app.post('/api/withdrawals', async (req, res) => {
             return res.json({ success: false, message });
         }
         
+        // Deduct amount from balance immediately
+        const newBalance = balance - amount;
         await pool.query(
-            'INSERT INTO withdrawals (user_id, amount, phone_number, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
-            [userId, amount, phone_number, 'pending']
+            'UPDATE wallets SET balance = $1, updated_at = NOW() WHERE user_id = $2',
+            [newBalance, userId]
         );
         
-        await notifyAdmin(`💸 <b>New Withdrawal Request</b>\nAmount: ${amount} ETB\nPhone: ${phone_number}\nUser ID: ${telegram_id}`);
+        // Insert withdrawal request
+        await pool.query(
+            'INSERT INTO withdrawals (user_id, amount, account_holder_name, phone_number, status, created_at) VALUES ($1, $2, $3, $4, $5, NOW())',
+            [userId, amount, account_holder_name, phone_number, 'pending']
+        );
         
-        res.json({ success: true, message: 'Withdrawal request submitted' });
+        // Record transaction
+        await pool.query(
+            'INSERT INTO transactions (user_id, type, amount, description) VALUES ($1, $2, $3, $4)',
+            [userId, 'withdrawal_pending', -amount, `Withdrawal request pending: ${amount} ETB to ${phone_number}`]
+        );
+        
+        const adminMessage = `💸 <b>New Withdrawal Request</b>\n\n` +
+            `👤 ተጠቃሚ: ${username}\n` +
+            `💵 መጠን: ${amount} ብር\n` +
+            `👤 ስም: ${account_holder_name}\n` +
+            `📱 ስልክ: ${phone_number}\n` +
+            `📅 ቀን: ${new Date().toLocaleString('am-ET')}`;
+        
+        await notifyAdmin(adminMessage);
+        
+        res.json({ success: true, message: 'ጥያቄ ተላክ! ገንዘቡ ተያዘ በዓቅሚን በሚፈቅድ ድረስ' });
     } catch (err) {
         console.error('Withdrawal error:', err);
         res.status(500).json({ success: false, message: 'Failed to submit withdrawal' });
@@ -2458,7 +2480,7 @@ app.get('/api/admin/pending', async (req, res) => {
         `);
         
         const withdrawals = await pool.query(`
-            SELECT 'withdrawal' as type, w.id, w.user_id, w.amount, w.created_at, u.username, u.telegram_id, w.phone_number
+            SELECT 'withdrawal' as type, w.id, w.user_id, w.amount, w.created_at, u.username, u.telegram_id, w.phone_number, w.account_holder_name
             FROM withdrawals w 
             JOIN users u ON w.user_id = u.id 
             WHERE w.status = 'pending'
@@ -2472,6 +2494,40 @@ app.get('/api/admin/pending', async (req, res) => {
     } catch (err) {
         console.error('Pending items error:', err);
         res.status(500).json({ error: 'Failed to fetch pending items' });
+    }
+});
+
+// Get user's withdrawal history
+app.get('/api/user/withdrawals/:telegramId', async (req, res) => {
+    try {
+        const { telegramId } = req.params;
+        const tgId = parseInt(telegramId);
+        
+        if (!tgId || tgId <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid telegram ID' });
+        }
+        
+        const userResult = await pool.query(
+            'SELECT id FROM users WHERE telegram_id = $1',
+            [tgId]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.json({ success: false, withdrawals: [] });
+        }
+        
+        const withdrawals = await pool.query(`
+            SELECT id, amount, phone_number, status, created_at, account_holder_name
+            FROM withdrawals
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT 20
+        `, [userResult.rows[0].id]);
+        
+        res.json({ success: true, withdrawals: withdrawals.rows });
+    } catch (err) {
+        console.error('User withdrawals error:', err);
+        res.status(500).json({ success: false, withdrawals: [] });
     }
 });
 
