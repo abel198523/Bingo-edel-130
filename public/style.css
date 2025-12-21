@@ -891,9 +891,9 @@ html, body {
 }
 
 .player-card-cell.marked {
-    background: linear-gradient(145deg, var(--color-green), #00b86b);
+    background: linear-gradient(145deg, var(--color-red), #ff6b7a);
     color: white;
-    box-shadow: 0 0 15px rgba(0, 217, 132, 0.4);
+    box-shadow: 0 0 15px rgba(255, 71, 87, 0.6);
 }
 
 .player-card-cell.free-space {

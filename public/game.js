@@ -521,7 +521,11 @@ function renderPlayerCard(cardId) {
             
             cell.addEventListener('click', function() {
                 if (num !== 0) {
-                    this.classList.toggle('marked');
+                    // Only allow clicking if not already marked
+                    if (this.classList.contains('marked')) {
+                        return; // Can't click already selected cards
+                    }
+                    this.classList.add('marked');
                 }
             });
             
