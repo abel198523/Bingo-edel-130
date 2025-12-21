@@ -673,7 +673,7 @@ function initializeWallet() {
                 const res = await fetch('/api/withdrawals', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), account_holder_name: name, phone_number: phone})
+                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), account_name: name, phone_number: phone})
                 });
                 const data = await res.json();
                 if(res.ok) {

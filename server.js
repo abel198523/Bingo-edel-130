@@ -223,30 +223,17 @@ async function checkWithdrawEligibility(telegramId) {
         );
         
         if (userResult.rows.length === 0) {
-            return { eligible: false, reason: 'not_registered' };
+            return { eligible: false, reason: 'not_registered', message: 'ተጠቃሚ ምዝግብ ተደርጓል' };
         }
         
         const userId = userResult.rows[0].id;
         
-        // Get current balance
-        const balanceResult = await pool.query(
-            'SELECT balance FROM wallets WHERE user_id = $1',
-            [userId]
-        );
-        const balance = parseFloat(balanceResult.rows[0]?.balance || 0);
-        
-        // Check minimum 50 birr balance requirement
-        if (balance < 50) {
-            return { eligible: false, reason: 'min_balance', balance, minRequired: 50, message: 'ለማውጣት ቢያንስ 50 ብር ባላንስ ሊኖርዎት ይገባል' };
-        }
-        
-        // Check for confirmed deposits - must have at least 1 successful transaction
+        // Only requirement: at least 1 confirmed deposit
         const depositResult = await pool.query(
-            'SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM deposits WHERE user_id = $1 AND status = $2',
+            'SELECT COUNT(*) as count FROM deposits WHERE user_id = $1 AND status = $2',
             [userId, 'confirmed']
         );
         
-        const totalDeposits = parseFloat(depositResult.rows[0].total);
         const depositCount = parseInt(depositResult.rows[0].count);
         
         // Must have at least 1 successful transaction (confirmed deposit)
@@ -254,22 +241,10 @@ async function checkWithdrawEligibility(telegramId) {
             return { eligible: false, reason: 'no_transaction', message: 'ለማውጣት ቢያንስ 1 የተሳካ ዲፖዚት ማድረግ አለብዎት' };
         }
         
-        // Check if user won games - if they have wins but deposits < 100, they need more deposits
-        // This ensures users who won using only the welcome bonus must deposit 100 birr first
-        const winCount = await pool.query(
-            'SELECT COUNT(*) as count FROM game_participants WHERE user_id = $1 AND is_winner = true',
-            [userId]
-        );
-        const wins = parseInt(winCount.rows[0].count);
-        
-        if (wins > 0 && totalDeposits < 100) {
-            return { eligible: false, reason: 'bonus_winner_min_deposit', message: 'በቦነስ ካሸነፉ ቢያንስ 100 ብር ዲፖዚት ማድረግ አለብዎት', totalDeposits, minRequired: 100 };
-        }
-        
-        return { eligible: true, depositCount, wins, userId, balance };
+        return { eligible: true, depositCount, userId };
     } catch (error) {
         console.error('Eligibility check error:', error);
-        return { eligible: false, reason: 'error' };
+        return { eligible: false, reason: 'error', message: 'ስህተት ተከስቷል' };
     }
 }
 
@@ -2324,7 +2299,7 @@ app.post('/api/withdrawals', async (req, res) => {
             return res.json({ success: false, message: 'ቀሪ ሒሳብዎ በቂ አይደለም' });
         }
         
-        // Check eligibility (includes min 50 birr balance check and other requirements)
+        // Check eligibility (only requires 1 successful deposit)
         const eligibility = await checkWithdrawEligibility(parseInt(telegram_id));
         if (!eligibility.eligible) {
             const message = eligibility.message || 'ማውጣት አይችሉም';
