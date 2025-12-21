@@ -631,7 +631,7 @@ function initializeWallet() {
     if (depositSubmit) {
         depositSubmit.addEventListener('click', async () => {
             const amount = document.getElementById('deposit-custom-amount').value;
-            const reference = prompt('ከTelebirr እንግዲህ ምን ገደብ አሪ?') || '';
+            const reference = prompt('Enter your Telebirr reference code:') || '';
             if (!amount || !reference) return alert('ሁለቱም ተራ አስፈላጊ!');
             try {
                 const res = await fetch('/api/deposits', {
