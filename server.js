@@ -2299,6 +2299,11 @@ app.post('/api/withdrawals', async (req, res) => {
             return res.json({ success: false, message: 'ቀሪ ሒሳብዎ በቂ አይደለም' });
         }
         
+        // Check minimum withdrawal amount
+        if (amount < 50) {
+            return res.json({ success: false, message: 'ትንሹ ማውጫ 50 ብር ነው' });
+        }
+        
         // Check eligibility (only requires 1 successful deposit)
         const eligibility = await checkWithdrawEligibility(parseInt(telegram_id));
         if (!eligibility.eligible) {
