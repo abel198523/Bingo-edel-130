@@ -7,9 +7,9 @@ class User {
         const tgId = telegramId ? parseInt(telegramId) : null;
         
         const result = await db.query(
-            `INSERT INTO users (username, password_hash, telegram_id) 
-             VALUES ($1, $2, $3) 
-             RETURNING id, username, telegram_id, created_at`,
+            `INSERT INTO users (username, password_hash, telegram_id, is_registered) 
+             VALUES ($1, $2, $3, TRUE) 
+             RETURNING id, username, telegram_id, created_at, is_registered`,
             [username, passwordHash, tgId]
         );
         
