@@ -416,6 +416,16 @@ html, body {
     animation: bounceIn 0.4s ease-out;
 }
 
+.card-number-btn.taken {
+    background: linear-gradient(145deg, #555, #444);
+    color: #888;
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    border-color: #555;
+    box-shadow: none;
+    pointer-events: none;
+}
+
 .confirmation-status {
     text-align: center;
     padding: 10px;

@@ -1659,6 +1659,12 @@ wss.on('connection', (ws) => {
                 case 'select_card':
                     if (gameState.phase === 'selection' && gameState.players.has(playerId)) {
                         gameState.players.get(playerId).selectedCardId = data.cardId;
+                        // Broadcast to all players that a card has been selected
+                        broadcast({
+                            type: 'card_selected',
+                            cardId: data.cardId,
+                            username: gameState.players.get(playerId).username
+                        });
                     }
                     break;
                     

@@ -388,6 +388,7 @@ let selectedCardId = null;
 let previewCardId = null;
 
 let takenCards = new Set();
+let playerUsername = 'Anonymous';
 
 function generateCardSelection() {
     const grid = document.getElementById('card-selection-grid');
@@ -1086,6 +1087,22 @@ function handleWebSocketMessage(data) {
             }
             if (data.prizeAmount !== undefined) {
                 updatePrizePoolDisplay(data.prizeAmount);
+            }
+            break;
+        case 'card_selected':
+            // Add card to taken set and update grid display
+            if (data.cardId && !takenCards.has(data.cardId)) {
+                takenCards.add(data.cardId);
+                // Update the card button visual state
+                const cardBtn = document.querySelector(`[data-card-id="${data.cardId}"]`);
+                if (cardBtn) {
+                    cardBtn.classList.add('taken');
+                    cardBtn.style.opacity = '0.5';
+                    cardBtn.style.cursor = 'not-allowed';
+                    cardBtn.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
+                    // Remove click listener for selecting
+                    cardBtn.removeEventListener('click', function() { showCardPreview(data.cardId); });
+                }
             }
             break;
         case 'error':
