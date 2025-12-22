@@ -2373,7 +2373,7 @@ app.post('/api/withdrawals', async (req, res) => {
             }
         }
         
-        res.json({ success: true, message: 'ጥያቄ ተላክ! ገንዘቡ ተያዘ በዓቅሚን በሚፈቅድ ድረስ' });
+        res.json({ success: true, message: 'ውድ ደንበኛችን የዊዝድሮው ጥያቄዎ ወደ አድሚን ተልኳል ! በትእግስት ይጠብቁ!' });
     } catch (err) {
         console.error('Withdrawal error:', err);
         res.status(500).json({ success: false, message: 'Failed to submit withdrawal' });
