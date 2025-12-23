@@ -1105,7 +1105,16 @@ function handleWebSocketMessage(data) {
             }
             break;
         case 'error':
-            alert(data.error || 'ችግር ተፈጥሯል');
+            if (data.error && data.error.includes('ጨዋታ አስቀድሞ')) {
+                alert('❌ ' + data.error);
+                // Show landing screen if game is in progress
+                const landingScreen = document.getElementById('landing-screen');
+                if (landingScreen) {
+                    landingScreen.style.display = 'flex';
+                }
+            } else {
+                alert(data.error || 'ችግር ተፈጥሯል');
+            }
             break;
         case 'bingo_rejected':
             alert(data.error || 'ቢንጎ ትክክል አይደለም');
