@@ -1662,8 +1662,7 @@ wss.on('connection', (ws) => {
                         // Broadcast to all players that a card has been selected
                         broadcast({
                             type: 'card_selected',
-                            cardId: data.cardId,
-                            username: gameState.players.get(playerId).username
+                            cardId: data.cardId
                         });
                     }
                     break;

@@ -1090,18 +1090,17 @@ function handleWebSocketMessage(data) {
             }
             break;
         case 'card_selected':
-            // Add card to taken set and update grid display
+            // Mark card as taken - no player name shown, only card marking
             if (data.cardId && !takenCards.has(data.cardId)) {
                 takenCards.add(data.cardId);
                 // Update the card button visual state
                 const cardBtn = document.querySelector(`[data-card-id="${data.cardId}"]`);
                 if (cardBtn) {
                     cardBtn.classList.add('taken');
-                    cardBtn.style.opacity = '0.5';
+                    cardBtn.style.backgroundColor = '#cccccc';
+                    cardBtn.style.opacity = '0.6';
                     cardBtn.style.cursor = 'not-allowed';
                     cardBtn.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
-                    // Remove click listener for selecting
-                    cardBtn.removeEventListener('click', function() { showCardPreview(data.cardId); });
                 }
             }
             break;
