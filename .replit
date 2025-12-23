@@ -12,6 +12,10 @@ PORT = "5000"
 
 [userenv.shared]
 TELEGRAM_BOT_TOKEN = "8570827233:AAE6NphfpzkDdK_Ed0eK7GL0A2ltiJHj1YM"
+FIREBASE_API_KEY = "AIzaSyACL3jqVSHBnyOA3AVESYNtY0qHTgIQAdo"
+FIREBASE_DB_URL = "https://edele-bingo-default-rtdb.europe-west1.firebasedatabase.app"
+FIREBASE_PROJECT_ID = "edele-bingo"
+FIREBASE_AUTH_DOMAIN = "edele-bingo.firebaseapp.com"
 
 [workflows]
 runButton = "Project"
