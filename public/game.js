@@ -405,7 +405,10 @@ function generateCardSelection() {
         // Mark as taken if in takenCards set
         if (takenCards.has(cardId)) {
             cardElement.classList.add('taken');
-            cardElement.style.opacity = '0.5';
+            cardElement.style.backgroundColor = '#ff4757';
+            cardElement.style.color = '#ffffff';
+            cardElement.style.fontWeight = 'bold';
+            cardElement.style.opacity = '1';
             cardElement.style.cursor = 'not-allowed';
             cardElement.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
         } else {
@@ -1090,15 +1093,17 @@ function handleWebSocketMessage(data) {
             }
             break;
         case 'card_selected':
-            // Mark card as taken - no player name shown, only card marking
+            // Mark card as taken - show in RED for real-time visibility
             if (data.cardId && !takenCards.has(data.cardId)) {
                 takenCards.add(data.cardId);
                 // Update the card button visual state
                 const cardBtn = document.querySelector(`[data-card-id="${data.cardId}"]`);
                 if (cardBtn) {
                     cardBtn.classList.add('taken');
-                    cardBtn.style.backgroundColor = '#cccccc';
-                    cardBtn.style.opacity = '0.6';
+                    cardBtn.style.backgroundColor = '#ff4757';
+                    cardBtn.style.color = '#ffffff';
+                    cardBtn.style.fontWeight = 'bold';
+                    cardBtn.style.opacity = '1';
                     cardBtn.style.cursor = 'not-allowed';
                     cardBtn.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
                 }

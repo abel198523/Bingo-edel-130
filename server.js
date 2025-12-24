@@ -1504,7 +1504,7 @@ wss.on('connection', (ws) => {
     if (gameState.phase !== 'selection') {
         ws.send(JSON.stringify({
             type: 'error',
-            error: 'ጨዋታ አስቀድሞ ተጀምሮ ነበር። ወደሚቀጥለው ጨዋታ ይሠብሩ'
+            error: 'ጨዋታ አስቀድሞ ተጀምሮል። እባክዎን የጨዋታ ይጠብቁ'
         }));
         ws.close(1000, 'Game in progress');
         return;
