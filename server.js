@@ -1259,7 +1259,8 @@ let gameState = {
     masterNumbers: [],
     winner: null,
     players: new Map(),
-    stakeAmount: 10
+    stakeAmount: 10,
+    selectedCards: new Set()
 };
 
 let playerIdCounter = 0;
@@ -1324,6 +1325,7 @@ async function startSelectionPhase() {
     gameState.timeLeft = SELECTION_TIME;
     gameState.winner = null;
     gameState.calledNumbers = [];
+    gameState.selectedCards = new Set(); // Clear selected cards for new game
     
     gameState.players.forEach((player, id) => {
         player.selectedCardId = null;
@@ -1530,7 +1532,8 @@ wss.on('connection', (ws) => {
         timeLeft: gameState.timeLeft,
         calledNumbers: gameState.calledNumbers,
         winner: gameState.winner,
-        gameId: currentGameId
+        gameId: currentGameId,
+        selectedCards: Array.from(gameState.selectedCards)
     }));
     
     ws.on('message', async (message) => {
@@ -1659,6 +1662,8 @@ wss.on('connection', (ws) => {
                 case 'select_card':
                     if (gameState.phase === 'selection' && gameState.players.has(playerId)) {
                         gameState.players.get(playerId).selectedCardId = data.cardId;
+                        // Add to selectedCards set for tracking
+                        gameState.selectedCards.add(data.cardId);
                         // Broadcast to all players that a card has been selected
                         broadcast({
                             type: 'card_selected',

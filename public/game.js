@@ -1045,6 +1045,16 @@ function handleWebSocketMessage(data) {
             updateTimerDisplay(data.timeLeft);
             updatePhaseDisplay(data.phase);
             renderMasterGrid();
+            // Load already-selected cards from server
+            if (data.selectedCards && data.selectedCards.length > 0) {
+                data.selectedCards.forEach(cardId => {
+                    if (!takenCards.has(cardId)) {
+                        takenCards.add(cardId);
+                    }
+                });
+                // Re-render grid to show selected cards as RED
+                generateCardSelection();
+            }
             if (data.calledNumbers && data.calledNumbers.length > 0) {
                 data.calledNumbers.forEach(num => {
                     markCalledNumber(num);
