@@ -413,7 +413,9 @@ function generateCardSelection() {
             cardElement.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
         } else {
             cardElement.addEventListener('click', function() {
-                showCardPreview(cardId);
+                if (!selectedCardId) {
+                    showCardPreview(cardId);
+                }
             });
         }
         
@@ -422,6 +424,7 @@ function generateCardSelection() {
 }
 
 function showCardPreview(cardId) {
+    if (selectedCardId) return; // Prevent previewing if card already confirmed
     previewCardId = cardId;
     const modal = document.getElementById('card-preview-modal');
     const previewGrid = document.getElementById('preview-card-grid');
@@ -463,8 +466,8 @@ function hideCardPreview() {
     previewCardId = null;
 }
 
-function confirmPreviewCard() {
-    if (previewCardId) {
+async function confirmPreviewCard() {
+    if (previewCardId && !selectedCardId) {
         selectedCardId = previewCardId;
         
         // Notify server about card selection
@@ -475,24 +478,19 @@ function confirmPreviewCard() {
             }));
         }
         
-        document.querySelectorAll('.card-number-btn').forEach(btn => {
-            btn.classList.remove('selected');
-            if (parseInt(btn.dataset.cardId) === selectedCardId) {
-                btn.classList.add('selected');
-            }
-        });
-        
-        const confirmBtn = document.getElementById('confirm-card-btn');
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
+        // Final confirmation flow (merging confirmPreview and handleCardConfirmation)
+        const result = await handleCardConfirmation(selectedCardId);
+        if (result.success) {
+            const selectionScreen = document.getElementById('selection-screen');
+            const gameScreen = document.getElementById('game-screen');
+            if (selectionScreen) selectionScreen.style.display = 'none';
+            if (gameScreen) gameScreen.style.display = 'flex';
+            renderPlayerCard(selectedCardId);
+            hideCardPreview();
+        } else {
+            selectedCardId = null; // Reset if failed
+            alert(result.message || 'ካርድ ለማረጋገጥ አልተቻለም');
         }
-        
-        const status = document.getElementById('confirmation-status');
-        if (status) {
-            status.textContent = `ካርድ #${selectedCardId} ተመርጧል`;
-        }
-        
-        hideCardPreview();
     }
 }
 
@@ -1069,6 +1067,11 @@ function handleWebSocketMessage(data) {
                     markMasterNumber(num);
                 });
             }
+            break;
+        case 'clear_local_selection':
+            selectedCardId = null;
+            takenCards.clear();
+            generateCardSelection();
             break;
         case 'auth_success':
             console.log('Authentication successful:', data.user);

@@ -1327,6 +1327,9 @@ async function startSelectionPhase() {
     gameState.calledNumbers = [];
     gameState.selectedCards = new Set(); // Clear selected cards for new game
     
+    // Broadcast a special event to clear client-side local selection
+    broadcast({ type: 'clear_local_selection' });
+    
     gameState.players.forEach((player, id) => {
         player.selectedCardId = null;
         player.isCardConfirmed = false;
