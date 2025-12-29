@@ -1021,6 +1021,72 @@ bot.onText(/\/reject_withdraw (\d+)/, async (msg, match) => {
 });
 
 // Handle deposit approval callback
+// Admin broadcast to all users
+bot.onText(/\/broadcast(.*)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const telegramId = msg.from.id.toString();
+    const message = match[1].trim();
+    
+    try {
+        // Check if user is admin
+        const adminCheck = await pool.query(
+            'SELECT * FROM admin_users WHERE telegram_id = $1 AND is_active = true',
+            [telegramId]
+        );
+        
+        if (adminCheck.rows.length === 0 && chatId.toString() !== ADMIN_CHAT_ID) {
+            await bot.sendMessage(chatId, '❌ የአድሚን መብት የለዎትም።');
+            return;
+        }
+        
+        if (!message) {
+            await bot.sendMessage(chatId, '⚠️ መልክት ያስገቡ።\n\n例: /broadcast ሙከራ መልክት');
+            return;
+        }
+        
+        // Get all users with telegram_id
+        const users = await pool.query('SELECT telegram_id FROM users WHERE telegram_id IS NOT NULL');
+        
+        if (users.rows.length === 0) {
+            await bot.sendMessage(chatId, '❌ ምንም ተጠቃሚ ያልተገኘ።');
+            return;
+        }
+        
+        let successCount = 0;
+        let failCount = 0;
+        const failedIds = [];
+        
+        // Send message to all users
+        for (const user of users.rows) {
+            try {
+                await bot.sendMessage(user.telegram_id, message, { parse_mode: 'HTML' });
+                successCount++;
+            } catch (err) {
+                failCount++;
+                failedIds.push(user.telegram_id);
+                console.error(`Failed to send to ${user.telegram_id}:`, err.message);
+            }
+        }
+        
+        let resultMessage = `📢 <b>ስርጭት ተጠናቀቀ!</b>\n\n`;
+        resultMessage += `✅ ተሳክተዋል: ${successCount}\n`;
+        resultMessage += `❌ ወድቅ: ${failCount}\n\n`;
+        
+        if (failedIds.length > 0 && failedIds.length <= 10) {
+            resultMessage += `<b>ወድቅ የሆኑ IDs:</b>\n${failedIds.join(', ')}`;
+        }
+        
+        await bot.sendMessage(chatId, resultMessage, { parse_mode: 'HTML' });
+        
+        // Log the broadcast
+        console.log(`Broadcast sent by admin ${telegramId}: Success=${successCount}, Failed=${failCount}`);
+        
+    } catch (error) {
+        console.error('Broadcast error:', error);
+        await bot.sendMessage(chatId, `❌ ስህተት ተፈጥሯል: ${error.message}`);
+    }
+});
+
 bot.on('callback_query', async (query) => {
     const data = query.data;
     const chatId = query.message.chat.id;
