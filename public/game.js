@@ -635,6 +635,20 @@ async function loadWalletData() {
 }
 
 function initializeWallet() {
+    // Set default values first
+    const walletBalanceEl = document.getElementById('wallet-balance');
+    if (walletBalanceEl && !walletBalanceEl.textContent) {
+        walletBalanceEl.textContent = '0.00';
+    }
+    const walletGamesEl = document.getElementById('wallet-total-games');
+    if (walletGamesEl && !walletGamesEl.textContent) {
+        walletGamesEl.textContent = '0';
+    }
+    const walletWinsEl = document.getElementById('wallet-wins');
+    if (walletWinsEl && !walletWinsEl.textContent) {
+        walletWinsEl.textContent = '0';
+    }
+    
     loadWallet();
     
     // Deposit button
