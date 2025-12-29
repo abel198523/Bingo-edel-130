@@ -147,6 +147,24 @@ function validateBingo(cardId, calledNumbers) {
     }
     
     if (diag1Complete || diag2Complete) return true;
+
+    // Check four corners
+    const corners = [
+        cardData[0][0], // Top-left
+        cardData[0][4], // Top-right
+        cardData[4][0], // Bottom-left
+        cardData[4][4]  // Bottom-right
+    ];
+    
+    let cornersComplete = true;
+    for (const num of corners) {
+        if (num !== 0 && !calledSet.has(num)) {
+            cornersComplete = false;
+            break;
+        }
+    }
+    
+    if (cornersComplete) return true;
     
     return false;
 }
