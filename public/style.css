@@ -2245,3 +2245,23 @@ html, body {
     box-shadow: var(--glow-gold);
 }
 
+
+/* Promo Section Styles */
+.promo-section {
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.promo-section h3 { color: #ffd700; margin-bottom: 10px; }
+.promo-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+.promo-input-group input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px; border-radius: 8px; }
+.promo-btn { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.promo-message { padding: 10px; border-radius: 8px; text-align: center; }
+.promo-form { background: rgba(255,255,255,0.08); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+.promo-form input { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px; border-radius: 8px; }
+.admin-create-btn { background: linear-gradient(135deg, #00d984 0%, #00ff99 100%); color: #000; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.admin-tab-btn { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 10px 15px; border-radius: 8px; cursor: pointer; margin-right: 8px; }
+.admin-tab-btn.active { background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #000; }

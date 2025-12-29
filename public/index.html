@@ -115,14 +115,22 @@
                 <div class="admin-header">
                     <h2>🎯 Admin Panel</h2>
                 </div>
+
+                <div class="admin-tabs">
+                    <button class="admin-tab-btn active" data-tab="stats">Stats</button>
+                    <button class="admin-tab-btn" data-tab="promos">ፕሮሞ</button>
+                    <button class="admin-tab-btn" data-tab="pending">Pending</button>
+                </div>
+
+                <div id="admin-tab-stats" class="admin-tab-content active">
                 
-                <div class="admin-stats-grid" id="admin-stats">
-                    <div class="admin-stat-card">
-                        <span class="admin-stat-label">ተጠቃሚዎች</span>
-                        <span class="admin-stat-value" id="admin-total-users">0</span>
-                    </div>
-                    <div class="admin-stat-card">
-                        <span class="admin-stat-label">ዲፖዚቶች</span>
+                    <div class="admin-stats-grid" id="admin-stats">
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">ተጠቃሚዎች</span>
+                            <span class="admin-stat-value" id="admin-total-users">0</span>
+                        </div>
+                        <div class="admin-stat-card">
+                            <span class="admin-stat-label">ዲፖዚቶች</span>
                         <span class="admin-stat-value" id="admin-pending-deposits">0</span>
                     </div>
                     <div class="admin-stat-card">
@@ -163,6 +171,21 @@
                     <div class="admin-section">
                         <h3>👥 ተጠቃሚዎች</h3>
                         <div id="admin-users-list" class="admin-list">
+                            <p class="admin-empty">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="admin-tab-promos" class="admin-tab-content">
+                    <div class="admin-section">
+                        <h3>🎁 ፕሮሞ ኮዶች</h3>
+                        <div class="promo-form">
+                            <input type="text" id="admin-promo-code" placeholder="ኮድ" maxlength="50">
+                            <input type="number" id="admin-promo-max-uses" placeholder="ከዚህ ያነስ ቦታ" min="1" max="10000">
+                            <input type="text" id="admin-promo-description" placeholder="መግለጫ">
+                            <button id="admin-create-promo-btn" class="admin-create-btn">ፕሮሞ ፈጠር</button>
+                        </div>
+                        <div id="admin-promos-list" class="admin-list">
                             <p class="admin-empty">Loading...</p>
                         </div>
                     </div>
@@ -280,6 +303,15 @@
                         <span class="action-text">ማውጣት</span>
                         <span class="action-subtitle">Withdraw</span>
                     </button>
+                </div>
+
+                <div class="promo-section">
+                    <h3>🎁 ፕሮሞ ኮድ</h3>
+                    <div class="promo-input-group">
+                        <input type="text" id="promo-code-input" placeholder="ኮድ ያስገቡ..." maxlength="50">
+                        <button id="promo-redeem-btn" class="promo-btn">ዋስ</button>
+                    </div>
+                    <div id="promo-message" class="promo-message" style="display: none;"></div>
                 </div>
                 
                 <div class="wallet-history">

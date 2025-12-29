@@ -652,6 +652,33 @@ function initializeWallet() {
         });
     }
     
+    // Promo Code Redeem
+    const promoBtn = document.getElementById('promo-redeem-btn');
+    if (promoBtn) {
+        promoBtn.addEventListener('click', async () => {
+            const code = document.getElementById('promo-code-input').value.trim();
+            if (!code) return alert('ኮድ ያስገቡ!');
+            
+            try {
+                const res = await fetch('/api/redeem-promo', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({telegramId: currentUserId, promoCode: code})
+                });
+                const data = await res.json();
+                const msgEl = document.getElementById('promo-message');
+                msgEl.textContent = data.message;
+                msgEl.style.display = 'block';
+                msgEl.style.color = data.success ? '#00d984' : '#ff4757';
+                
+                if (data.success) {
+                    document.getElementById('promo-code-input').value = '';
+                    loadWallet();
+                }
+            } catch(e) { console.error(e); alert('ስህተት!'); }
+        });
+    }
+    
     // Refresh buttons
     const walletRefresh = document.getElementById('wallet-refresh-btn');
     if (walletRefresh) {

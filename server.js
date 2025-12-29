@@ -3028,6 +3028,156 @@ app.get('/api/user/withdrawals/:telegramId', async (req, res) => {
     }
 });
 
+// ================== Promo Code API Routes ==================
+
+// Admin: Create promo code
+app.post('/api/admin/promo-codes', async (req, res) => {
+    try {
+        const { code, maxUses, description, expiresAt } = req.body;
+        
+        if (!code || !maxUses) {
+            return res.status(400).json({ success: false, message: 'ኮድና አክሲሙም ይጠየቃል' });
+        }
+        
+        const result = await pool.query(
+            `INSERT INTO promo_codes (code, bonus_amount, max_uses, description, expires_at, is_active)
+             VALUES ($1, 10.00, $2, $3, $4, true)
+             RETURNING id, code, max_uses, bonus_amount`,
+            [code.toUpperCase(), maxUses, description || '', expiresAt || null]
+        );
+        
+        res.json({ success: true, message: 'ፕሮሞ ኮድ ተፈጠረ!', promo: result.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(400).json({ success: false, message: 'ኮዱ አስቀድሞ ነበር' });
+        }
+        console.error('Promo code creation error:', err);
+        res.status(500).json({ success: false, message: 'ስህተት ተከስቷል' });
+    }
+});
+
+// Get all active promo codes (admin only)
+app.get('/api/admin/promo-codes', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, code, bonus_amount, max_uses, current_uses, is_active, 
+                   expires_at, description, created_at
+            FROM promo_codes
+            ORDER BY created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Get promo codes error:', err);
+        res.status(500).json({ error: 'Failed to fetch promo codes' });
+    }
+});
+
+// Deactivate promo code (admin)
+app.put('/api/admin/promo-codes/:id/deactivate', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('UPDATE promo_codes SET is_active = false WHERE id = $1', [id]);
+        res.json({ success: true, message: 'ፕሮሞ ኮድ ተዘግቷል' });
+    } catch (err) {
+        console.error('Deactivate error:', err);
+        res.status(500).json({ success: false, message: 'ስህተት ተከስቷል' });
+    }
+});
+
+// User: Redeem promo code
+app.post('/api/redeem-promo', async (req, res) => {
+    try {
+        const { telegramId, promoCode } = req.body;
+        
+        if (!telegramId || !promoCode) {
+            return res.status(400).json({ success: false, message: 'ኮዱ ያስገቡ' });
+        }
+        
+        // Get user
+        const userResult = await pool.query(
+            'SELECT id FROM users WHERE telegram_id = $1',
+            [parseInt(telegramId)]
+        );
+        
+        if (userResult.rows.length === 0) {
+            return res.status(400).json({ success: false, message: 'ተጠቃሚ ስህተት' });
+        }
+        
+        const userId = userResult.rows[0].id;
+        
+        // Get promo code
+        const promoResult = await pool.query(
+            `SELECT id, bonus_amount, max_uses, current_uses, expires_at, is_active
+             FROM promo_codes
+             WHERE code = $1`,
+            [promoCode.toUpperCase()]
+        );
+        
+        if (promoResult.rows.length === 0) {
+            return res.json({ success: false, message: 'ኮዱ በር የለም' });
+        }
+        
+        const promo = promoResult.rows[0];
+        
+        // Check if expired
+        if (!promo.is_active) {
+            return res.json({ success: false, message: 'ጊዜ ተሞላ ወይም ተዘግቷል' });
+        }
+        
+        if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+            return res.json({ success: false, message: 'ጊዜ ተሞላ' });
+        }
+        
+        // Check max uses
+        if (promo.current_uses >= promo.max_uses) {
+            return res.json({ success: false, message: 'ጊዜ ተሞላ' });
+        }
+        
+        // Check if user already used this code
+        const usedResult = await pool.query(
+            'SELECT id FROM promo_code_uses WHERE promo_code_id = $1 AND user_id = $2',
+            [promo.id, userId]
+        );
+        
+        if (usedResult.rows.length > 0) {
+            return res.json({ success: false, message: 'ጊዜ ተሞላ - ይህ ኮድ አስቀድሞ ተጠቀምበት' });
+        }
+        
+        // Award bonus
+        await pool.query(
+            'UPDATE wallets SET balance = balance + $1 WHERE user_id = $2',
+            [promo.bonus_amount, userId]
+        );
+        
+        // Record usage
+        await pool.query(
+            'INSERT INTO promo_code_uses (promo_code_id, user_id) VALUES ($1, $2)',
+            [promo.id, userId]
+        );
+        
+        // Increment usage count
+        await pool.query(
+            'UPDATE promo_codes SET current_uses = current_uses + 1 WHERE id = $1',
+            [promo.id]
+        );
+        
+        // Log transaction
+        const walletResult = await pool.query('SELECT balance FROM wallets WHERE user_id = $1', [userId]);
+        const newBalance = parseFloat(walletResult.rows[0].balance);
+        
+        await pool.query(
+            `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, description)
+             VALUES ($1, 'promo_bonus', $2, $3, $4, $5)`,
+            [userId, promo.bonus_amount, newBalance - promo.bonus_amount, newBalance, `Promo code: ${promoCode}`]
+        );
+        
+        res.json({ success: true, message: `✅ ${promo.bonus_amount} ብር ታክለዋል!`, bonus: promo.bonus_amount });
+    } catch (err) {
+        console.error('Redeem promo error:', err);
+        res.status(500).json({ success: false, message: 'ስህተት ተከስቷል' });
+    }
+});
+
 // ================== End Admin API Routes ==================
 
 const PORT = process.env.PORT || 5000;
