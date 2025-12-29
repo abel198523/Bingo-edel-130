@@ -1571,7 +1571,7 @@ function stopNumberCalling(stake = 10) {
 }
 
 async function gameLoop() {
-    [5, 10].forEach(async (stake) => {
+    [10].forEach(async (stake) => {
         const gameState = getGameState(stake);
         if (gameState.phase === 'game') {
             return;

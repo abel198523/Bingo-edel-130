@@ -4,6 +4,12 @@
 Edele Bingo is a real-time Bingo game built as a Telegram Mini App with integrated payment system (deposits/withdrawals) and admin panel.
 
 ## Recent Changes (December 2024)
+- **Game Function Repairs & 5 ETB Room Removal** (Dec 30, 2025)
+  - Removed 5 ETB stake completely from backend (gameStates, currentGameIds)
+  - Fixed game creation loop: changed from [5, 10] to [10] in setInterval
+  - Updated frontend UI to show only 10 ETB option (removed Stake 5 button)
+  - Fixed broadcast duplicate handlers (removed conflicting /broadcast commands)
+  - Verified game creation now only creates 10 ETB games
 - **Telegram Mini App Referral System Enhanced** (Dec 14, 2025)
   - Referral links now use Telegram Mini App format: `https://t.me/BOT_USERNAME/MINI_APP_NAME?startapp=ref_{referral_code}`
   - Frontend parses `start_param` from `window.Telegram.WebApp.initDataUnsafe`
