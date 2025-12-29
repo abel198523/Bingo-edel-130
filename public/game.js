@@ -657,7 +657,15 @@ function initializeWallet() {
     if (promoBtn) {
         promoBtn.addEventListener('click', async () => {
             const code = document.getElementById('promo-code-input').value.trim();
-            if (!code) return alert('ኮድ ያስገቡ!');
+            if (!code) {
+                const msgEl = document.getElementById('promo-message');
+                if (msgEl) {
+                    msgEl.textContent = 'ኮድ ያስገቡ!';
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#ff4757';
+                }
+                return;
+            }
             
             try {
                 const res = await fetch('/api/redeem-promo', {
@@ -667,15 +675,26 @@ function initializeWallet() {
                 });
                 const data = await res.json();
                 const msgEl = document.getElementById('promo-message');
-                msgEl.textContent = data.message;
-                msgEl.style.display = 'block';
-                msgEl.style.color = data.success ? '#00d984' : '#ff4757';
                 
-                if (data.success) {
-                    document.getElementById('promo-code-input').value = '';
-                    loadWallet();
+                if (msgEl) {
+                    msgEl.textContent = data.message || 'Unknown error';
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = data.success ? '#00d984' : '#ff4757';
+                    
+                    if (data.success) {
+                        document.getElementById('promo-code-input').value = '';
+                        setTimeout(() => loadWallet(), 500);
+                    }
                 }
-            } catch(e) { console.error(e); alert('ስህተት!'); }
+            } catch(e) { 
+                console.error('Promo error:', e); 
+                const msgEl = document.getElementById('promo-message');
+                if (msgEl) {
+                    msgEl.textContent = 'Network error: ' + e.message;
+                    msgEl.style.display = 'block';
+                    msgEl.style.color = '#ff4757';
+                }
+            }
         });
     }
     
