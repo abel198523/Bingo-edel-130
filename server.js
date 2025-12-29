@@ -193,6 +193,10 @@ function getMainKeyboard(telegramId) {
     
     if (miniAppUrlWithId) {
         keyboard.push([{ text: "▶️ Play", web_app: { url: miniAppUrlWithId } }]);
+        keyboard.push([
+            { text: "💳 Wallet", web_app: { url: `${miniAppUrlWithId}#wallet` } },
+            { text: "👤 Profile", web_app: { url: `${miniAppUrlWithId}#profile` } }
+        ]);
     }
     
     keyboard.push([{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]);

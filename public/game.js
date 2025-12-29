@@ -158,7 +158,20 @@ async function checkRegistrationAndProceed() {
             initializeWebSocket();
             initializeLandingScreen();
             initializeFooterNavigation();
-            checkAdminStatus(); // Assuming checkAdminStatus is defined elsewhere
+            checkAdminStatus();
+            
+            // Handle hash-based navigation (from Telegram bot buttons)
+            setTimeout(() => {
+                const hash = window.location.hash.substring(1);
+                console.log('Hash detected:', hash);
+                if (hash === 'wallet') {
+                    const walletBtn = document.querySelector('[data-target="wallet"]');
+                    if (walletBtn) walletBtn.click();
+                } else if (hash === 'profile') {
+                    const profileBtn = document.querySelector('[data-target="profile"]');
+                    if (profileBtn) profileBtn.click();
+                }
+            }, 500);
         } else {
             showRegistrationRequired();
         }
