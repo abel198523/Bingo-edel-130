@@ -467,6 +467,14 @@ function confirmPreviewCard() {
     if (previewCardId) {
         selectedCardId = previewCardId;
         
+        // Notify server about card selection
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'select_card',
+                cardId: selectedCardId
+            }));
+        }
+        
         document.querySelectorAll('.card-number-btn').forEach(btn => {
             btn.classList.remove('selected');
             if (parseInt(btn.dataset.cardId) === selectedCardId) {
