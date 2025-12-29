@@ -1070,7 +1070,22 @@ function handleWebSocketMessage(data) {
             break;
         case 'clear_local_selection':
             selectedCardId = null;
+            previewCardId = null;
             takenCards.clear();
+            
+            // Clear marked cells on the player's current card if any
+            const markedCells = document.querySelectorAll('.player-card-cell.marked');
+            markedCells.forEach(cell => cell.classList.remove('marked'));
+            
+            // Update UI to selection state
+            const landingScreen = document.getElementById('landing-screen');
+            const selectionScreen = document.getElementById('selection-screen');
+            const gameScreen = document.getElementById('game-screen');
+            
+            if (landingScreen) landingScreen.style.display = 'none';
+            if (selectionScreen) selectionScreen.style.display = 'flex';
+            if (gameScreen) gameScreen.style.display = 'none';
+            
             generateCardSelection();
             break;
         case 'auth_success':
