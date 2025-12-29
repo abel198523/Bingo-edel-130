@@ -1251,21 +1251,38 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chewatabingo-secret-key-change-in-
 const SELECTION_TIME = 45;
 const WINNER_DISPLAY_TIME = 5;
 
-let currentGameId = null;
-let gameState = {
-    phase: 'selection',
-    timeLeft: SELECTION_TIME,
-    calledNumbers: [],
-    masterNumbers: [],
-    winner: null,
-    players: new Map(),
-    stakeAmount: 10,
-    selectedCards: new Set()
+let currentGameIds = { 5: null, 10: null };
+let gameStates = {
+    5: {
+        phase: 'selection',
+        timeLeft: SELECTION_TIME,
+        calledNumbers: [],
+        masterNumbers: [],
+        winner: null,
+        players: new Map(),
+        stakeAmount: 5,
+        selectedCards: new Set()
+    },
+    10: {
+        phase: 'selection',
+        timeLeft: SELECTION_TIME,
+        calledNumbers: [],
+        masterNumbers: [],
+        winner: null,
+        players: new Map(),
+        stakeAmount: 10,
+        selectedCards: new Set()
+    }
 };
 
 let playerIdCounter = 0;
 
-function initializeMasterNumbers() {
+function getGameState(stake = 10) {
+    return gameStates[stake] || gameStates[10];
+}
+
+function initializeMasterNumbers(stake = 10) {
+    const gameState = getGameState(stake);
     gameState.masterNumbers = [];
     for (let i = 1; i <= 75; i++) {
         gameState.masterNumbers.push(i);
@@ -1282,7 +1299,8 @@ function getLetterForNumber(num) {
     return '';
 }
 
-function callNumber() {
+function callNumber(stake = 10) {
+    const gameState = getGameState(stake);
     const uncalledNumbers = gameState.masterNumbers.filter(
         num => !gameState.calledNumbers.includes(num)
     );
@@ -1301,16 +1319,17 @@ function callNumber() {
     };
 }
 
-function broadcast(message) {
+function broadcast(message, stake = 10) {
     const data = JSON.stringify(message);
     wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
+        if (client.readyState === WebSocket.OPEN && client.stake === stake) {
             client.send(data);
         }
     });
 }
 
-function getConfirmedPlayersCount() {
+function getConfirmedPlayersCount(stake = 10) {
+    const gameState = getGameState(stake);
     let count = 0;
     gameState.players.forEach((player) => {
         if (player.isCardConfirmed) {
@@ -1320,7 +1339,8 @@ function getConfirmedPlayersCount() {
     return count;
 }
 
-async function startSelectionPhase() {
+async function startSelectionPhase(stake = 10) {
+    const gameState = getGameState(stake);
     gameState.phase = 'selection';
     gameState.timeLeft = SELECTION_TIME;
     gameState.winner = null;
@@ -1334,12 +1354,12 @@ async function startSelectionPhase() {
     });
 
     // Broadcast a special event to clear client-side local selection
-    broadcast({ type: 'clear_local_selection' });
+    broadcast({ type: 'clear_local_selection' }, stake);
     
     try {
         const game = await Game.create(gameState.stakeAmount);
-        currentGameId = game.id;
-        console.log(`New game created: #${currentGameId}`);
+        currentGameIds[stake] = game.id;
+        console.log(`New game created for ${stake} ETB: #${game.id}`);
     } catch (err) {
         console.error('Error creating game:', err);
     }
@@ -1348,39 +1368,41 @@ async function startSelectionPhase() {
         type: 'phase_change',
         phase: 'selection',
         timeLeft: gameState.timeLeft,
-        gameId: currentGameId
-    });
+        gameId: currentGameIds[stake]
+    }, stake);
 }
 
-function startGamePhase() {
+function startGamePhase(stake = 10) {
+    const gameState = getGameState(stake);
     gameState.phase = 'game';
     gameState.timeLeft = -1;
-    initializeMasterNumbers();
+    initializeMasterNumbers(stake);
     
-    const playerCount = getConfirmedPlayersCount();
+    const playerCount = getConfirmedPlayersCount(stake);
     const totalPot = gameState.stakeAmount * playerCount;
     
     broadcast({
         type: 'phase_change',
         phase: 'game',
         timeLeft: -1,
-        players: getPlayersInfo(),
+        players: getPlayersInfo(stake),
         playerCount: playerCount,
         totalPot: totalPot,
         prizeAmount: Math.floor(totalPot * 0.8 * 100) / 100
-    });
+    }, stake);
 }
 
-async function startWinnerDisplay(winnerInfo) {
-    stopNumberCalling();
+async function startWinnerDisplay(winnerInfo, stake = 10) {
+    stopNumberCalling(stake);
+    const gameState = getGameState(stake);
     gameState.phase = 'winner';
     gameState.timeLeft = WINNER_DISPLAY_TIME;
     gameState.winner = winnerInfo;
     
     try {
-        if (currentGameId && winnerInfo.userId) {
+        if (currentGameIds[stake] && winnerInfo.userId) {
             const game = await Game.setWinner(
-                currentGameId, 
+                currentGameIds[stake], 
                 winnerInfo.userId, 
                 winnerInfo.cardId,
                 gameState.calledNumbers
@@ -1390,7 +1412,7 @@ async function startWinnerDisplay(winnerInfo) {
                 // Calculate prize with 20% house cut
                 const houseCutPercentage = 0.20; // 20% house cut
                 const prizeAmount = Math.floor(game.total_pot * (1 - houseCutPercentage) * 100) / 100;
-                await Wallet.win(winnerInfo.userId, prizeAmount, currentGameId);
+                await Wallet.win(winnerInfo.userId, prizeAmount, currentGameIds[stake]);
                 winnerInfo.prize = prizeAmount;
                 winnerInfo.totalPot = game.total_pot;
                 winnerInfo.houseCut = game.total_pot - prizeAmount;
@@ -1398,7 +1420,7 @@ async function startWinnerDisplay(winnerInfo) {
                 // Send real-time balance update to the winner
                 const newBalance = await Wallet.getBalance(winnerInfo.userId);
                 wss.clients.forEach(client => {
-                    if (client.readyState === WebSocket.OPEN) {
+                    if (client.readyState === WebSocket.OPEN && client.stake === stake) {
                         const player = gameState.players.get(client.playerId);
                         if (player && player.userId === winnerInfo.userId) {
                             client.send(JSON.stringify({
@@ -1422,10 +1444,11 @@ async function startWinnerDisplay(winnerInfo) {
         phase: 'winner',
         timeLeft: gameState.timeLeft,
         winner: winnerInfo
-    });
+    }, stake);
 }
 
-function getPlayersInfo() {
+function getPlayersInfo(stake = 10) {
+    const gameState = getGameState(stake);
     const players = [];
     gameState.players.forEach((player, id) => {
         if (player.isCardConfirmed) {
@@ -1439,29 +1462,31 @@ function getPlayersInfo() {
     return players;
 }
 
-let numberCallInterval = null;
+let numberCallIntervals = { 5: null, 10: null };
 
-function startNumberCalling() {
-    if (numberCallInterval) clearInterval(numberCallInterval);
+function startNumberCalling(stake = 10) {
+    if (numberCallIntervals[stake]) clearInterval(numberCallIntervals[stake]);
     
-    numberCallInterval = setInterval(() => {
+    numberCallIntervals[stake] = setInterval(() => {
+        const gameState = getGameState(stake);
         if (gameState.phase === 'game') {
-            const call = callNumber();
+            const call = callNumber(stake);
             if (call) {
                 broadcast({
                     type: 'number_called',
                     number: call.number,
                     letter: call.letter,
                     calledNumbers: gameState.calledNumbers
-                });
+                }, stake);
             } else {
-                stopNumberCalling();
+                stopNumberCalling(stake);
                 broadcast({
                     type: 'all_numbers_called'
-                });
+                }, stake);
                 setTimeout(() => {
+                    const gameState = getGameState(stake);
                     if (gameState.phase === 'game') {
-                        startSelectionPhase();
+                        startSelectionPhase(stake);
                     }
                 }, 5000);
             }
@@ -1469,113 +1494,135 @@ function startNumberCalling() {
     }, 3000);
 }
 
-function stopNumberCalling() {
-    if (numberCallInterval) {
-        clearInterval(numberCallInterval);
-        numberCallInterval = null;
+function stopNumberCalling(stake = 10) {
+    if (numberCallIntervals[stake]) {
+        clearInterval(numberCallIntervals[stake]);
+        numberCallIntervals[stake] = null;
     }
 }
 
 async function gameLoop() {
-    if (gameState.phase === 'game') {
-        return;
-    }
-    
-    gameState.timeLeft--;
-    
-    broadcast({
-        type: 'timer_update',
-        phase: gameState.phase,
-        timeLeft: gameState.timeLeft
-    });
-    
-    if (gameState.timeLeft <= 0) {
-        if (gameState.phase === 'selection') {
-            const confirmedPlayers = getConfirmedPlayersCount();
-            
-            if (confirmedPlayers >= 2) {
-                startGamePhase();
-                startNumberCalling();
-            } else {
-                // Not enough players, refund and restart selection
-                if (confirmedPlayers === 1) {
-                    try {
-                        const participants = await Game.getParticipants(currentGameId);
-                        for (const p of participants) {
-                            await Wallet.deposit(p.user_id, p.stake_amount, `Refund: Not enough players for game #${currentGameId}`);
-                            
-                            // Notify the player
-                            wss.clients.forEach(client => {
-                                if (client.readyState === WebSocket.OPEN && client.playerId) {
-                                    const player = gameState.players.get(client.playerId);
-                                    if (player && player.userId === p.user_id) {
-                                        client.send(JSON.stringify({
-                                            type: 'error',
-                                            error: 'በቂ ተጫዋች ስለሌለ ጨዋታው አልተጀመረም። ያስያዙት ብር ተመልሶልዎታል። እባክዎን እንደገና ይሞክሩ።'
-                                        }));
-                                        // Update their local balance display
-                                        Wallet.getBalance(p.user_id).then(balance => {
-                                            client.send(JSON.stringify({
-                                                type: 'balance_update',
-                                                balance: parseFloat(balance)
-                                            }));
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                        await Game.cancel(currentGameId);
-                    } catch (err) {
-                        console.error('Error during refund:', err);
-                    }
-                }
-                await startSelectionPhase();
-            }
-        } else if (gameState.phase === 'winner') {
-            await startSelectionPhase();
+    [5, 10].forEach(async (stake) => {
+        const gameState = getGameState(stake);
+        if (gameState.phase === 'game') {
+            return;
         }
-    }
+        
+        gameState.timeLeft--;
+        
+        broadcast({
+            type: 'timer_update',
+            phase: gameState.phase,
+            timeLeft: gameState.timeLeft
+        }, stake);
+        
+        if (gameState.timeLeft <= 0) {
+            if (gameState.phase === 'selection') {
+                const confirmedPlayers = getConfirmedPlayersCount(stake);
+                
+                if (confirmedPlayers >= 2) {
+                    startGamePhase(stake);
+                    startNumberCalling(stake);
+                } else {
+                    // Not enough players, refund and restart selection
+                    if (confirmedPlayers === 1) {
+                        try {
+                            const participants = await Game.getParticipants(currentGameIds[stake]);
+                            for (const p of participants) {
+                                await Wallet.deposit(p.user_id, p.stake_amount, `Refund: Not enough players for game #${currentGameIds[stake]}`);
+                                
+                                // Notify the player
+                                wss.clients.forEach(client => {
+                                    if (client.readyState === WebSocket.OPEN && client.playerId && client.stake === stake) {
+                                        const player = gameState.players.get(client.playerId);
+                                        if (player && player.userId === p.user_id) {
+                                            client.send(JSON.stringify({
+                                                type: 'error',
+                                                error: 'በቂ ተጫዋች ስለሌለ ጨዋታው አልተጀመረም። ያስያዙት ብር ተመልሶልዎታል። እባክዎን እንደገና ይሞክሩ።'
+                                            }));
+                                            // Update their local balance display
+                                            Wallet.getBalance(p.user_id).then(balance => {
+                                                client.send(JSON.stringify({
+                                                    type: 'balance_update',
+                                                    balance: parseFloat(balance)
+                                                }));
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                            await Game.cancel(currentGameIds[stake]);
+                        } catch (err) {
+                            console.error('Error during refund:', err);
+                        }
+                    }
+                    await startSelectionPhase(stake);
+                }
+            } else if (gameState.phase === 'winner') {
+                await startSelectionPhase(stake);
+            }
+        }
+    });
 }
 
 wss.on('connection', (ws) => {
-    // Reject new connections if game is already in progress
-    if (gameState.phase !== 'selection') {
-        ws.send(JSON.stringify({
-            type: 'error',
-            error: 'ጨዋታ አስቀድሞ ተጀምሮል። እባክዎን የጨዋታ ይጠብቁ'
-        }));
-        ws.close(1000, 'Game in progress');
-        return;
-    }
+    let stake = 10; // Default to 10 ETB
     
-    const playerId = ++playerIdCounter;
-    const player = {
-        id: playerId,
-        userId: null,
-        username: 'Guest_' + playerId,
-        selectedCardId: null,
-        isCardConfirmed: false,
-        balance: 0
-    };
-    gameState.players.set(playerId, player);
+    ws.once('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            if (data.type === 'set_stake') {
+                stake = data.stake || 10;
+                if (stake !== 5) stake = 10;
+                ws.stake = stake;
+                
+                const gameState = getGameState(stake);
+                
+                // Reject new connections if game is already in progress
+                if (gameState.phase !== 'selection') {
+                    ws.send(JSON.stringify({
+                        type: 'error',
+                        error: 'ጨዋታ አስቀድሞ ተጀምሮል። እባክዎን የጨዋታ ይጠብቁ'
+                    }));
+                    ws.close(1000, 'Game in progress');
+                    return;
+                }
+                
+                const playerId = ++playerIdCounter;
+                const player = {
+                    id: playerId,
+                    userId: null,
+                    username: 'Guest_' + playerId,
+                    selectedCardId: null,
+                    isCardConfirmed: false,
+                    balance: 0
+                };
+                gameState.players.set(playerId, player);
+                
+                ws.playerId = playerId;
+                
+                ws.send(JSON.stringify({
+                    type: 'init',
+                    playerId: playerId,
+                    phase: gameState.phase,
+                    timeLeft: gameState.timeLeft,
+                    calledNumbers: gameState.calledNumbers,
+                    winner: gameState.winner,
+                    gameId: currentGameIds[stake],
+                    selectedCards: Array.from(gameState.selectedCards)
+                }));
+            }
+        } catch (e) {
+            console.error('Error parsing set_stake message:', e);
+        }
+    });
     
-    ws.playerId = playerId;
-    
-    ws.send(JSON.stringify({
-        type: 'init',
-        playerId: playerId,
-        phase: gameState.phase,
-        timeLeft: gameState.timeLeft,
-        calledNumbers: gameState.calledNumbers,
-        winner: gameState.winner,
-        gameId: currentGameId,
-        selectedCards: Array.from(gameState.selectedCards)
-    }));
     
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
-            const player = gameState.players.get(playerId);
+            const gameState = getGameState(ws.stake || 10);
+            const player = gameState.players.get(ws.playerId);
             
             switch (data.type) {
                 case 'auth_telegram':
@@ -1690,21 +1737,21 @@ wss.on('connection', (ws) => {
                     break;
                     
                 case 'set_username':
-                    if (gameState.players.has(playerId)) {
-                        gameState.players.get(playerId).username = data.username;
+                    if (gameState.players.has(ws.playerId)) {
+                        gameState.players.get(ws.playerId).username = data.username;
                     }
                     break;
                     
                 case 'select_card':
-                    if (gameState.phase === 'selection' && gameState.players.has(playerId)) {
-                        gameState.players.get(playerId).selectedCardId = data.cardId;
+                    if (gameState.phase === 'selection' && gameState.players.has(ws.playerId)) {
+                        gameState.players.get(ws.playerId).selectedCardId = data.cardId;
                         // Add to selectedCards set for tracking
                         gameState.selectedCards.add(data.cardId);
                         // Broadcast to all players that a card has been selected
                         broadcast({
                             type: 'card_selected',
                             cardId: data.cardId
-                        });
+                        }, ws.stake || 10);
                     }
                     break;
                     
@@ -1729,7 +1776,7 @@ wss.on('connection', (ws) => {
                             
                             try {
                                 await Game.addParticipant(
-                                    currentGameId,
+                                    currentGameIds[ws.stake || 10],
                                     player.userId,
                                     cardIdToConfirm,
                                     gameState.stakeAmount
@@ -1762,7 +1809,7 @@ wss.on('connection', (ws) => {
                                     userId: player.userId,
                                     username: player.username,
                                     cardId: player.selectedCardId
-                                });
+                                }, ws.stake || 10);
                             } else {
                                 ws.send(JSON.stringify({
                                     type: 'bingo_rejected',
@@ -1841,7 +1888,8 @@ wss.on('connection', (ws) => {
     });
     
     ws.on('close', () => {
-        gameState.players.delete(playerId);
+        const gameState = getGameState(ws.stake || 10);
+        gameState.players.delete(ws.playerId);
     });
 });
 

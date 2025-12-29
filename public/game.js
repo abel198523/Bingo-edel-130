@@ -1020,14 +1020,17 @@ function initializeWebSocket() {
     ws = new WebSocket(wsUrl);
     
     ws.onopen = function() {
-        console.log('WebSocket connected');
-        if (currentUserId && currentUserId !== 999999) {
-            ws.send(JSON.stringify({
-                type: 'auth_telegram',
-                telegramId: currentUserId.toString(),
-                username: 'Player_' + currentUserId
-            }));
-        }
+        console.log('WebSocket connected, sending stake:', currentStake);
+        ws.send(JSON.stringify({ type: 'set_stake', stake: currentStake }));
+        setTimeout(() => {
+            if (currentUserId && currentUserId !== 999999) {
+                ws.send(JSON.stringify({
+                    type: 'auth_telegram',
+                    telegramId: currentUserId.toString(),
+                    username: 'Player_' + currentUserId
+                }));
+            }
+        }, 100);
     };
     
     ws.onmessage = function(event) {
