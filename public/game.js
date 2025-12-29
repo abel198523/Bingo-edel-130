@@ -481,12 +481,17 @@ async function confirmPreviewCard() {
         // Final confirmation flow (merging confirmPreview and handleCardConfirmation)
         const result = await handleCardConfirmation(selectedCardId);
         if (result.success) {
-            const selectionScreen = document.getElementById('selection-screen');
-            const gameScreen = document.getElementById('game-screen');
-            if (selectionScreen) selectionScreen.style.display = 'none';
-            if (gameScreen) gameScreen.style.display = 'flex';
-            renderPlayerCard(selectedCardId);
+            // Stay on selection screen until timer ends
+            // The phase_change 'game' message will handle the transition
             hideCardPreview();
+            
+            // Visual feedback that card is confirmed
+            const status = document.getElementById('confirmation-status');
+            if (status) {
+                status.textContent = `ካርድ #${selectedCardId} ተረጋግጧል! ጨዋታ እስኪጀምር ይጠብቁ...`;
+                status.style.display = 'block';
+                status.style.color = '#00d984';
+            }
         } else {
             selectedCardId = null; // Reset if failed
             alert(result.message || 'ካርድ ለማረጋገጥ አልተቻለም');
@@ -1110,6 +1115,15 @@ function handleWebSocketMessage(data) {
             if (data.prizeAmount !== undefined) {
                 updatePrizePoolDisplay(data.prizeAmount);
             }
+            
+            // Reset status message in selection screen
+            const status = document.getElementById('confirmation-status');
+            if (status && data.phase === 'selection') {
+                status.textContent = 'ካርድ ይምረጡና አረጋግጡ';
+                status.style.display = 'none';
+                status.style.color = 'rgba(255, 255, 255, 0.7)';
+            }
+            
             handlePhaseChange(data);
             break;
         case 'number_called':
@@ -1201,7 +1215,17 @@ function handlePhaseChange(data) {
         if (confirmBtn) confirmBtn.disabled = true;
     } else if (data.phase === 'game') {
         // Game is starting
-        renderMasterGrid();
+        const selectionScreen = document.getElementById('selection-screen');
+        const gameScreen = document.getElementById('game-screen');
+        
+        if (selectionScreen) selectionScreen.style.display = 'none';
+        if (gameScreen) {
+            gameScreen.style.display = 'flex';
+            renderMasterGrid();
+            if (selectedCardId) {
+                renderPlayerCard(selectedCardId);
+            }
+        }
     } else if (data.phase === 'winner') {
         if (data.winner) {
             showWinnerDisplay(data.winner);
