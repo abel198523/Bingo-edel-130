@@ -1,5 +1,5 @@
 let currentUserId = null;
-let currentStake = 10;
+let currentStake = 5;
 let ws = null;
 let isRegistered = false;
 
