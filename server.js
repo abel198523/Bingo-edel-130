@@ -537,6 +537,25 @@ bot.onText(/\/setadmin\s+(\d+)/, async (msg, match) => {
     }
 });
 
+// Handle /broadcast command for admin
+bot.onText(/\/broadcast/, async (msg) => {
+    const chatId = msg.chat.id;
+    const adminChatId = msg.from.id;
+    
+    try {
+        const isAdmin = ADMIN_CHAT_ID && adminChatId == ADMIN_CHAT_ID;
+        if (!isAdmin) {
+            await bot.sendMessage(chatId, "❌ ይህ ትዕዛዝ ማስተዳደር መብት ያለባቸው ብቻ ነው!");
+            return;
+        }
+        
+        userStates.set(adminChatId, { action: 'broadcast', step: 'message' });
+        await bot.sendMessage(chatId, '📢 ብሮድካስት መልክት ይጻፉ:', { reply_markup: { keyboard: [[{ text: "❌ ሰርዝ" }]], resize_keyboard: true } });
+    } catch (error) {
+        console.error('Broadcast error:', error);
+    }
+});
+
 // Handle Cancel
 bot.onText(/❌ ሰርዝ/, async (msg) => {
     const chatId = msg.chat.id;
@@ -563,6 +582,26 @@ bot.on('message', async (msg) => {
     const state = userStates.get(telegramId);
     
     if (!state) return;
+    
+    // Handle Broadcast flow
+    if (state.action === 'broadcast') {
+        if (state.step === 'message') {
+            state.broadcastMessage = text;
+            state.step = 'confirm';
+            userStates.set(telegramId, state);
+            
+            await bot.sendMessage(chatId, `📢 <b>ብሮድካስት:</b>\n\n${text}\n\nይህን ለሁሉም ተጠቃሚዎች ለመላክ 'Send' ን ይጫኑ።`, {
+                parse_mode: 'HTML',
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: '✅ Send', callback_data: 'confirm_broadcast' }],
+                        [{ text: '❌ Cancel', callback_data: 'cancel_broadcast' }]
+                    ]
+                }
+            });
+        }
+        return;
+    }
     
     // Handle Withdraw flow
     if (state.action === 'withdraw') {
@@ -1088,9 +1127,52 @@ bot.onText(/\/broadcast(.*)/, async (msg, match) => {
 });
 
 bot.on('callback_query', async (query) => {
+    const chatId = query.from.id;
     const data = query.data;
-    const chatId = query.message.chat.id;
-    const messageId = query.message.message_id;
+    
+    if (data === 'confirm_broadcast') {
+        const state = userStates.get(chatId);
+        if (state && state.action === 'broadcast' && state.broadcastMessage) {
+            try {
+                const allUsersResult = await pool.query('SELECT telegram_id FROM users WHERE is_registered = true');
+                const users = allUsersResult.rows;
+                let successCount = 0;
+                
+                for (const user of users) {
+                    if (bot && user.telegram_id) {
+                        try {
+                            await bot.sendMessage(user.telegram_id, `📢 <b>ብሮድካስት:</b>\n\n${state.broadcastMessage}`, { parse_mode: 'HTML' });
+                            successCount++;
+                        } catch (err) {
+                            console.error(`Failed to send broadcast to user ${user.telegram_id}:`, err);
+                        }
+                    }
+                }
+                
+                await pool.query(
+                    'INSERT INTO broadcasts (admin_username, message, recipient_count) VALUES ($1, $2, $3)',
+                    ['Admin', state.broadcastMessage, successCount]
+                );
+                
+                userStates.delete(chatId);
+                await bot.sendMessage(chatId, `✅ ብሮድካስት ተላክ! ${successCount}/${users.length} ተጠቃሚዎች`);
+                await bot.answerCallbackQuery(query.id);
+            } catch (error) {
+                console.error('Broadcast send error:', error);
+                await bot.answerCallbackQuery(query.id, { text: '❌ ስህተት', show_alert: true });
+            }
+        }
+    } else if (data === 'cancel_broadcast') {
+        userStates.delete(chatId);
+        await bot.sendMessage(chatId, '❌ ተሰርዟል።');
+        await bot.answerCallbackQuery(query.id);
+        return;
+    }
+    
+    
+    // Continue with existing callback handling
+    const data2 = query.data;
+    const chatId = query.message?.chat?.id || query.from?.id;
     
     try {
         // Approve deposit
@@ -1447,9 +1529,8 @@ function startGamePhase(stake = 10) {
     const playerCount = getConfirmedPlayersCount(stake);
     const totalPot = gameState.stakeAmount * playerCount;
     
-    // House cut percentage: 20% for 10 ETB, 10% for 5 ETB
-    const houseCutPercentage = stake === 5 ? 0.10 : 0.20;
-    const prizeAmount = Math.floor(totalPot * (1 - houseCutPercentage) * 100) / 100;
+    // Prize calculation: 80% of total pot (20% house cut for all)
+    const prizeAmount = Math.floor(totalPot * 0.8 * 100) / 100;
     
     broadcast({
         type: 'phase_change',
@@ -1479,9 +1560,8 @@ async function startWinnerDisplay(winnerInfo, stake = 10) {
             );
             
             if (game && game.total_pot > 0) {
-                // Calculate prize with stake-based house cut: 20% for 10 ETB, 10% for 5 ETB
-                const houseCutPercentage = stake === 5 ? 0.10 : 0.20;
-                const prizeAmount = Math.floor(game.total_pot * (1 - houseCutPercentage) * 100) / 100;
+                // Prize calculation: 80% of total pot (20% house cut for all)
+                const prizeAmount = Math.floor(game.total_pot * 0.8 * 100) / 100;
                 await Wallet.win(winnerInfo.userId, prizeAmount, currentGameIds[stake]);
                 winnerInfo.prize = prizeAmount;
                 winnerInfo.totalPot = game.total_pot;
