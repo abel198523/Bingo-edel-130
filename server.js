@@ -302,7 +302,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         if (startParam) {
             welcomeMsg += "🎁 በሪፈራል ተጋብዘዋል!\n\n";
         }
-        welcomeMsg += "ለመመዝገብ እና 2 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።";
+        welcomeMsg += "ለመመዝገብ እና 10 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።";
         
         bot.sendMessage(chatId, welcomeMsg, {
             reply_markup: {
@@ -365,7 +365,7 @@ bot.on('contact', async (msg) => {
         
         console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
         
-        let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 2 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
+        let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
         
         const referralLink = generateReferralLink(referralCode);
         if (referralLink) {
