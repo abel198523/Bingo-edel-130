@@ -2,6 +2,7 @@ let currentUserId = null;
 let currentStake = 10;
 let ws = null;
 let isRegistered = false;
+const MAINTENANCE_MODE = true;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeUserAndCheck();
@@ -147,6 +148,12 @@ async function checkRegistrationAndProceed() {
         return;
     }
     
+    // Show maintenance screen if maintenance mode is enabled
+    if (MAINTENANCE_MODE) {
+        showMaintenanceScreen();
+        return;
+    }
+    
     try {
         const response = await fetch(`/api/check-registration/${currentUserId}`);
         const data = await response.json();
@@ -218,6 +225,20 @@ function hideRegistrationRequired() {
     if (regScreen) {
         regScreen.style.display = 'none';
     }
+}
+
+function showMaintenanceScreen() {
+    const landingScreen = document.getElementById('landing-screen');
+    const selectionScreen = document.getElementById('selection-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const profileScreen = document.getElementById('profile-screen');
+    const maintenanceScreen = document.getElementById('maintenance-screen');
+    
+    if (landingScreen) landingScreen.style.display = 'none';
+    if (selectionScreen) selectionScreen.style.display = 'none';
+    if (gameScreen) gameScreen.style.display = 'none';
+    if (profileScreen) profileScreen.style.display = 'none';
+    if (maintenanceScreen) maintenanceScreen.style.display = 'flex';
 }
 
 function initializeFooterNavigation() {
