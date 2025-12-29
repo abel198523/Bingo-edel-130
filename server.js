@@ -137,7 +137,7 @@ function generateReferralCode(userId) {
 
 // Award referral bonus to referrer
 async function awardReferralBonus(referrerId, referredUserId) {
-    const REFERRAL_BONUS = 10.00;
+    const REFERRAL_BONUS = 2.00;
     
     try {
         // Check if bonus already awarded
@@ -302,7 +302,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         if (startParam) {
             welcomeMsg += "🎁 በሪፈራል ተጋብዘዋል!\n\n";
         }
-        welcomeMsg += "ለመመዝገብ እና 10 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።";
+        welcomeMsg += "ለመመዝገብ እና 2 ብር ቦነስ ለማግኘት ስልክ ቁጥርዎን ያጋሩ።";
         
         bot.sendMessage(chatId, welcomeMsg, {
             reply_markup: {
@@ -365,13 +365,13 @@ bot.on('contact', async (msg) => {
         
         console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
         
-        let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
+        let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 2 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
         
         const referralLink = generateReferralLink(referralCode);
         if (referralLink) {
-            welcomeMessage += `🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 10 ብር ቦነስ ያግኙ!\n\n`;
+            welcomeMessage += `🔗 የእርስዎ ሪፈራል ሊንክ:\n${referralLink}\n\nጓደኞችዎን ይጋብዙ 2 ብር ቦነስ ያግኙ!\n\n`;
         } else {
-            welcomeMessage += `🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nጓደኞችዎን ይጋብዙ 10 ብር ቦነስ ያግኙ!\n\n`;
+            welcomeMessage += `🔗 የእርስዎ ሪፈራል ኮድ: ${referralCode}\n\nጓደኞችዎን ይጋብዙ 2 ብር ቦነስ ያግኙ!\n\n`;
         }
         
         welcomeMessage += `አሁን 'Play' ን ይጫኑ!\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።`;
@@ -428,11 +428,11 @@ bot.onText(/🔗 ሪፈራል/, async (msg) => {
             if (referralLink) {
                 message = `🔗 <b>የእርስዎ ሪፈራል ሊንክ:</b>\n\n${referralLink}\n\n` +
                     `📋 ይህንን ሊንክ ለጓደኞችዎ ያጋሩ!\n` +
-                    `🎁 አንድ ጓደኛ ሲመዘገብ 10 ብር ቦነስ ያገኛሉ!`;
+                    `🎁 አንድ ጓደኛ ሲመዘገብ 2 ብር ቦነስ ያገኛሉ!`;
             } else {
                 message = `🔗 <b>የእርስዎ ሪፈራል ኮድ:</b>\n\n${referralCode}\n\n` +
                     `📋 ይህንን ኮድ ለጓደኞችዎ ያጋሩ!\n` +
-                    `🎁 አንድ ጓደኛ ሲመዘገብ 10 ብር ቦነስ ያገኛሉ!`;
+                    `🎁 አንድ ጓደኛ ሲመዘገብ 2 ብር ቦነስ ያገኛሉ!`;
             }
             
             await bot.sendMessage(chatId, message,
