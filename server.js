@@ -1130,7 +1130,8 @@ bot.on('callback_query', async (query) => {
     const chatId = query.from.id;
     const data = query.data;
     
-    if (data === 'confirm_broadcast') {
+    try {
+        if (data === 'confirm_broadcast') {
         const state = userStates.get(chatId);
         if (state && state.action === 'broadcast' && state.broadcastMessage) {
             try {
@@ -1169,14 +1170,8 @@ bot.on('callback_query', async (query) => {
         return;
     }
     
-    
-    // Continue with existing callback handling
-    const data2 = query.data;
-    const chatId = query.message?.chat?.id || query.from?.id;
-    
-    try {
-        // Approve deposit
-        if (data.startsWith('approve_deposit_')) {
+    // Approve deposit
+    if (data.startsWith('approve_deposit_')) {
             const parts = data.split('_');
             const depositId = parseInt(parts[2]);
             const userTelegramId = parseInt(parts[3]);
@@ -1399,18 +1394,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chewatabingo-secret-key-change-in-
 const SELECTION_TIME = 45;
 const WINNER_DISPLAY_TIME = 5;
 
-let currentGameIds = { 5: null, 10: null };
+let currentGameIds = { 10: null };
 let gameStates = {
-    5: {
-        phase: 'selection',
-        timeLeft: SELECTION_TIME,
-        calledNumbers: [],
-        masterNumbers: [],
-        winner: null,
-        players: new Map(),
-        stakeAmount: 5,
-        selectedCards: new Set()
-    },
     10: {
         phase: 'selection',
         timeLeft: SELECTION_TIME,
@@ -1723,7 +1708,7 @@ wss.on('connection', (ws) => {
             const data = JSON.parse(message);
             if (data.type === 'set_stake') {
                 stake = data.stake || 10;
-                if (stake !== 5) stake = 10;
+                stake = 10;
                 ws.stake = stake;
                 
                 const gameState = getGameState(stake);
