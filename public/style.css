@@ -417,13 +417,14 @@ html, body {
 }
 
 .card-number-btn.taken {
-    background: linear-gradient(145deg, #555, #444);
-    color: #888;
-    opacity: 0.5 !important;
+    background: linear-gradient(145deg, var(--color-red), #cc3a47);
+    color: #ffffff;
+    opacity: 1 !important;
     cursor: not-allowed !important;
-    border-color: #555;
-    box-shadow: none;
+    border-color: var(--color-red);
+    box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
     pointer-events: none;
+    font-weight: bold;
 }
 
 .confirmation-status {
