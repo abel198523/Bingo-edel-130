@@ -252,6 +252,7 @@
             <button class="tab" onclick="showTab(event, 'withdrawals')">💸 ማውጣቶች</button>
             <button class="tab" onclick="showTab(event, 'users')">👥 ተጠቃሚዎች</button>
             <button class="tab" onclick="showTab(event, 'transactions')">📊 ግብይቶች</button>
+            <button class="tab" onclick="showTab(event, 'broadcast')">📢 ብሮድካስት</button>
         </div>
         
         <div id="deposits" class="tab-content active">
@@ -285,6 +286,20 @@
             <div class="section">
                 <h2>📊 የቅርብ ግብይቶች</h2>
                 <div id="transactionsTable">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="broadcast" class="tab-content">
+            <div class="section">
+                <h2>📢 ለሁሉም ተጠቃሚዎች ብሮድካስት</h2>
+                <div style="margin-bottom: 20px;">
+                    <textarea id="broadcastMessage" placeholder="ብሮድካስት መልክት ይጻፉ..." style="width: 100%; height: 150px; padding: 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(0, 0, 0, 0.3); color: white; font-family: inherit; font-size: 1rem;"></textarea>
+                    <button onclick="sendBroadcast()" style="margin-top: 10px; background: #2ecc71; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;">📤 ያሳውቁ</button>
+                </div>
+                <h3 style="color: #f39c12; margin-top: 30px; margin-bottom: 15px;">የቅርብ ብሮድካስቶች</h3>
+                <div id="broadcastList">
                     <div class="loading">Loading...</div>
                 </div>
             </div>
@@ -486,6 +501,83 @@
             }
         }
         
+        async function sendBroadcast() {
+            const message = document.getElementById('broadcastMessage').value.trim();
+            
+            if (!message) {
+                alert('እባክዎ ብሮድካስት መልክት ይጻፉ');
+                return;
+            }
+            
+            if (!confirm('ለ' + (await getActiveUserCount()) + ' ተጠቃሚዎች ይህን ብሮድካስት ለመላክ እርግጠኛ ነዎት?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                
+                if (response.ok) {
+                    alert('✅ ብሮድካስት ተላክ!');
+                    document.getElementById('broadcastMessage').value = '';
+                    loadBroadcasts();
+                } else {
+                    const error = await response.json();
+                    alert('❌ ስህተት: ' + (error.message || 'ብሮድካስት ሊላክ አልተቻለም'));
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        }
+        
+        async function loadBroadcasts() {
+            try {
+                const response = await fetch('/api/admin/broadcasts');
+                const broadcasts = await response.json();
+                
+                if (broadcasts.length === 0) {
+                    document.getElementById('broadcastList').innerHTML = '<div class="empty-state">ብሮድካስቶች የሉም</div>';
+                    return;
+                }
+                
+                let html = `<table>
+                    <tr>
+                        <th>ID</th>
+                        <th>መልክት</th>
+                        <th>ተላኪ</th>
+                        <th>ተጠቃሚዎች</th>
+                        <th>ቀን</th>
+                    </tr>`;
+                    
+                for (const b of broadcasts) {
+                    html += `<tr>
+                        <td>${b.id}</td>
+                        <td>${b.message.substring(0, 50)}${b.message.length > 50 ? '...' : ''}</td>
+                        <td>${b.admin_username || 'Admin'}</td>
+                        <td>${b.recipient_count || 0}</td>
+                        <td>${new Date(b.created_at).toLocaleString('am-ET')}</td>
+                    </tr>`;
+                }
+                html += '</table>';
+                document.getElementById('broadcastList').innerHTML = html;
+            } catch (err) {
+                document.getElementById('broadcastList').innerHTML = '<div class="empty-state">Error loading broadcasts</div>';
+            }
+        }
+        
+        async function getActiveUserCount() {
+            try {
+                const response = await fetch('/api/admin/stats');
+                const data = await response.json();
+                return data.totalUsers || 0;
+            } catch (err) {
+                return 0;
+            }
+        }
+        
         async function approveDeposit(id) {
             if (!confirm('ይህን ዲፖዚት ለማፅደቅ እርግጠኛ ነዎት?')) return;
             
@@ -547,7 +639,9 @@
         }
         
         loadData();
+        loadBroadcasts();
         setInterval(loadData, 30000);
+        setInterval(loadBroadcasts, 30000);
     </script>
 </body>
 </html>

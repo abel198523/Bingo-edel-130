@@ -118,6 +118,15 @@ async function initializeDatabase() {
                 is_active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS broadcasts (
+                id SERIAL PRIMARY KEY,
+                admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+                admin_username VARCHAR(50),
+                message TEXT NOT NULL,
+                recipient_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
         
         // Add missing columns to existing tables if they don't exist

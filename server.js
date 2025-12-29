@@ -2905,6 +2905,62 @@ app.post('/api/admin/add-balance', async (req, res) => {
     }
 });
 
+// Send broadcast message to all users
+app.post('/api/admin/broadcast', async (req, res) => {
+    try {
+        const { message } = req.body;
+        
+        if (!message || message.trim().length === 0) {
+            return res.status(400).json({ error: 'Message cannot be empty' });
+        }
+        
+        const allUsersResult = await pool.query('SELECT telegram_id FROM users WHERE is_registered = true');
+        const users = allUsersResult.rows;
+        
+        if (users.length === 0) {
+            return res.status(400).json({ error: 'No users to broadcast to' });
+        }
+        
+        let successCount = 0;
+        for (const user of users) {
+            if (bot && user.telegram_id) {
+                try {
+                    await bot.sendMessage(user.telegram_id, `📢 <b>ብሮድካስት:</b>\n\n${message}`, { parse_mode: 'HTML' });
+                    successCount++;
+                } catch (err) {
+                    console.error(`Failed to send broadcast to user ${user.telegram_id}:`, err);
+                }
+            }
+        }
+        
+        await pool.query(
+            'INSERT INTO broadcasts (admin_username, message, recipient_count) VALUES ($1, $2, $3)',
+            ['Admin', message, successCount]
+        );
+        
+        res.json({ success: true, messagesSent: successCount, totalUsers: users.length });
+    } catch (err) {
+        console.error('Broadcast error:', err);
+        res.status(500).json({ error: 'Failed to send broadcast' });
+    }
+});
+
+// Get all broadcasts
+app.get('/api/admin/broadcasts', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT id, admin_username, message, recipient_count, created_at 
+            FROM broadcasts 
+            ORDER BY created_at DESC 
+            LIMIT 50
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Get broadcasts error:', err);
+        res.status(500).json({ error: 'Failed to fetch broadcasts' });
+    }
+});
+
 // Get pending deposits and withdrawals only
 app.get('/api/admin/pending', async (req, res) => {
     try {
