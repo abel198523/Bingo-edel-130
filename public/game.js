@@ -213,6 +213,7 @@ function initializeFooterNavigation() {
     footerButtons.forEach(btn => {
         btn.addEventListener('click', function() {
             const target = this.dataset.target;
+            console.log('Footer clicked:', target);
             
             document.querySelectorAll('.footer-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
@@ -232,16 +233,30 @@ function initializeFooterNavigation() {
             if (walletScreen) walletScreen.style.display = 'none';
             
             if (target === 'game') {
-                if (landingScreen) landingScreen.style.display = 'flex';
+                if (landingScreen) {
+                    landingScreen.style.display = 'flex';
+                    console.log('Game screen shown');
+                }
             } else if (target === 'wallet') {
-                if (walletScreen) walletScreen.style.display = 'flex';
-                loadWalletData(); // Assuming loadWalletData is defined elsewhere
+                if (walletScreen) {
+                    walletScreen.style.display = 'flex';
+                    walletScreen.style.visibility = 'visible';
+                    walletScreen.style.opacity = '1';
+                    console.log('Wallet screen shown');
+                    loadWalletData();
+                }
             } else if (target === 'profile') {
-                if (profileScreen) profileScreen.style.display = 'flex';
-                loadProfile();
+                if (profileScreen) {
+                    profileScreen.style.display = 'flex';
+                    console.log('Profile screen shown');
+                    loadProfile();
+                }
             } else if (target === 'admin') {
-                if (adminScreen) adminScreen.style.display = 'flex';
-                loadAdminData(); // Assuming loadAdminData is defined elsewhere
+                if (adminScreen) {
+                    adminScreen.style.display = 'flex';
+                    console.log('Admin screen shown');
+                    loadAdminData();
+                }
             }
         });
     });
@@ -251,7 +266,7 @@ function initializeFooterNavigation() {
         profileRefreshBtn.addEventListener('click', loadProfile);
     }
     
-    initializeWallet(); // Assuming initializeWallet is defined elsewhere
+    initializeWallet();
 }
 
 async function loadProfile() {
