@@ -655,7 +655,6 @@ html, body {
 /* ================================================== */
 
 #game-screen {
-    display: none;
     flex-direction: column;
     flex: 1;
     background: transparent;
@@ -1174,7 +1173,6 @@ html, body {
 /* ================================================== */
 
 #profile-screen {
-    display: flex;
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
@@ -1632,7 +1630,6 @@ html, body {
 /* ================================================== */
 
 #wallet-screen {
-    display: none;
     flex-direction: column;
     flex: 1;
     padding: 15px;
