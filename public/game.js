@@ -584,7 +584,18 @@ async function processReferral(telegramId, startParam, referralCode) {
 
 
 async function loadWallet() {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+        // Show message if user ID is not available
+        const walletHistoryEl = document.getElementById('wallet-history-list');
+        if (walletHistoryEl) {
+            walletHistoryEl.innerHTML = '<div class="history-empty">ተጠቃሚ ሪጀስተር ያልሆነ ነው</div>';
+        }
+        const walletBalanceEl = document.getElementById('wallet-balance');
+        if (walletBalanceEl) {
+            walletBalanceEl.textContent = '0.00';
+        }
+        return;
+    }
     
     try {
         const response = await fetch(`/api/wallet/${currentUserId}`);
