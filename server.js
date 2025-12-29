@@ -556,6 +556,25 @@ bot.onText(/\/broadcast/, async (msg) => {
     }
 });
 
+// Handle /promo command for admin to create promo codes
+bot.onText(/\/promo/, async (msg) => {
+    const chatId = msg.chat.id;
+    const adminChatId = msg.from.id;
+    
+    try {
+        const isAdmin = ADMIN_CHAT_ID && adminChatId == ADMIN_CHAT_ID;
+        if (!isAdmin) {
+            await bot.sendMessage(chatId, "❌ ይህ ትዕዛዝ ማስተዳደር መብት ያለባቸው ብቻ ነው!");
+            return;
+        }
+        
+        userStates.set(adminChatId, { action: 'promo', step: 'code' });
+        await bot.sendMessage(chatId, '🎁 ፕሮሞ ኮድ ይጻፉ (ለምሳሌ: SUMMER2025):', { reply_markup: { keyboard: [[{ text: "❌ ሰርዝ" }]], resize_keyboard: true } });
+    } catch (error) {
+        console.error('Promo command error:', error);
+    }
+});
+
 // Handle Cancel
 bot.onText(/❌ ሰርዝ/, async (msg) => {
     const chatId = msg.chat.id;
@@ -599,6 +618,76 @@ bot.on('message', async (msg) => {
                     ]
                 }
             });
+        }
+        return;
+    }
+    
+    // Handle Promo Code creation flow
+    if (state.action === 'promo') {
+        if (state.step === 'code') {
+            const code = text.toUpperCase().trim();
+            if (code.length < 3 || code.length > 50) {
+                await bot.sendMessage(chatId, '❌ ኮዱ 3-50 ቁምፊ መሆን አለበት።');
+                return;
+            }
+            
+            // Check if code already exists
+            const existingCode = await pool.query(
+                'SELECT id FROM promo_codes WHERE code = $1',
+                [code]
+            );
+            
+            if (existingCode.rows.length > 0) {
+                await bot.sendMessage(chatId, '❌ ይህ ኮድ ቀድሞ ተፈጠረ።');
+                return;
+            }
+            
+            state.code = code;
+            state.step = 'maxuses';
+            userStates.set(telegramId, state);
+            await bot.sendMessage(chatId, '📊 ከዚህ ያነስ ጥቅም ብዛት ያስገቡ (ለምሳሌ: 100):');
+        } else if (state.step === 'maxuses') {
+            const maxUses = parseInt(text);
+            if (isNaN(maxUses) || maxUses < 1 || maxUses > 100000) {
+                await bot.sendMessage(chatId, '❌ ከ1 እስከ 100000 መካከል መሆን አለበት።');
+                return;
+            }
+            
+            state.maxUses = maxUses;
+            state.step = 'description';
+            userStates.set(telegramId, state);
+            await bot.sendMessage(chatId, '📝 ግልጽ መግለጫ ይጻፉ (ከ50 ቁምፊ በታች) ወይም "ቀጥል" ይጻፉ:');
+        } else if (state.step === 'description') {
+            const description = text === 'ቀጥል' ? '' : text.trim().substring(0, 50);
+            
+            try {
+                const result = await pool.query(
+                    `INSERT INTO promo_codes (code, max_uses, bonus_amount, description) 
+                     VALUES ($1, $2, 10, $3) 
+                     RETURNING id, code, max_uses, bonus_amount`,
+                    [state.code, state.maxUses, description]
+                );
+                
+                const promo = result.rows[0];
+                userStates.delete(telegramId);
+                
+                await bot.sendMessage(chatId, 
+                    `✅ <b>ፕሮሞ ኮድ ተፈጠረ!</b>\n\n` +
+                    `🎁 ኮድ: <code>${promo.code}</code>\n` +
+                    `💰 ቦነስ: ${promo.bonus_amount} ብር\n` +
+                    `📊 ከዚህ ያነስ ብዛት: ${promo.max_uses}\n` +
+                    (description ? `📝 ገለጻ: ${description}\n` : '') +
+                    `\n✨ ተጠቃሚዎች ይህን ኮድ በወሌት ታብ ሊያገልግሉት ይችላሉ።`,
+                    { 
+                        parse_mode: 'HTML',
+                        reply_markup: getMainKeyboard(telegramId) 
+                    }
+                );
+            } catch (error) {
+                console.error('Promo creation error:', error);
+                userStates.delete(telegramId);
+                await bot.sendMessage(chatId, '❌ ፕሮሞ ኮድ ሲፈጠር ስህተት ተፈጥሯል።', { reply_markup: getMainKeyboard(telegramId) });
+            }
         }
         return;
     }
