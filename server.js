@@ -1493,10 +1493,42 @@ async function gameLoop() {
         if (gameState.phase === 'selection') {
             const confirmedPlayers = getConfirmedPlayersCount();
             
-            if (confirmedPlayers >= 1) {
+            if (confirmedPlayers >= 2) {
                 startGamePhase();
                 startNumberCalling();
             } else {
+                // Not enough players, refund and restart selection
+                if (confirmedPlayers === 1) {
+                    try {
+                        const participants = await Game.getParticipants(currentGameId);
+                        for (const p of participants) {
+                            await Wallet.deposit(p.user_id, p.stake_amount, `Refund: Not enough players for game #${currentGameId}`);
+                            
+                            // Notify the player
+                            wss.clients.forEach(client => {
+                                if (client.readyState === WebSocket.OPEN && client.playerId) {
+                                    const player = gameState.players.get(client.playerId);
+                                    if (player && player.userId === p.user_id) {
+                                        client.send(JSON.stringify({
+                                            type: 'error',
+                                            error: 'በቂ ተጫዋች ስለሌለ ጨዋታው አልተጀመረም። ያስያዙት ብር ተመልሶልዎታል። እባክዎን እንደገና ይሞክሩ።'
+                                        }));
+                                        // Update their local balance display
+                                        Wallet.getBalance(p.user_id).then(balance => {
+                                            client.send(JSON.stringify({
+                                                type: 'balance_update',
+                                                balance: parseFloat(balance)
+                                            }));
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        await Game.cancel(currentGameId);
+                    } catch (err) {
+                        console.error('Error during refund:', err);
+                    }
+                }
                 await startSelectionPhase();
             }
         } else if (gameState.phase === 'winner') {
