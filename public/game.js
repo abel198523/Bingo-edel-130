@@ -592,6 +592,24 @@ async function loadWallet() {
         
         if (data.success) {
             updateWalletDisplay(data.balance);
+            
+            // Update wallet stats
+            const totalGamesEl = document.getElementById('wallet-total-games');
+            if (totalGamesEl) {
+                totalGamesEl.textContent = data.totalGames || 0;
+            }
+            
+            const winsEl = document.getElementById('wallet-wins');
+            if (winsEl) {
+                winsEl.textContent = data.wins || 0;
+            }
+            
+            // Update last updated time
+            const updatedEl = document.getElementById('wallet-updated');
+            if (updatedEl) {
+                const now = new Date();
+                updatedEl.textContent = `Last updated: ${now.toLocaleTimeString('am-ET')}`;
+            }
         }
     } catch (error) {
         console.error('Error loading wallet:', error);
