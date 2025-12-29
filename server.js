@@ -1447,6 +1447,10 @@ function startGamePhase(stake = 10) {
     const playerCount = getConfirmedPlayersCount(stake);
     const totalPot = gameState.stakeAmount * playerCount;
     
+    // House cut percentage: 20% for 10 ETB, 10% for 5 ETB
+    const houseCutPercentage = stake === 5 ? 0.10 : 0.20;
+    const prizeAmount = Math.floor(totalPot * (1 - houseCutPercentage) * 100) / 100;
+    
     broadcast({
         type: 'phase_change',
         phase: 'game',
@@ -1454,7 +1458,7 @@ function startGamePhase(stake = 10) {
         players: getPlayersInfo(stake),
         playerCount: playerCount,
         totalPot: totalPot,
-        prizeAmount: Math.floor(totalPot * 0.8 * 100) / 100
+        prizeAmount: prizeAmount
     }, stake);
 }
 
@@ -1475,8 +1479,8 @@ async function startWinnerDisplay(winnerInfo, stake = 10) {
             );
             
             if (game && game.total_pot > 0) {
-                // Calculate prize with 20% house cut
-                const houseCutPercentage = 0.20; // 20% house cut
+                // Calculate prize with stake-based house cut: 20% for 10 ETB, 10% for 5 ETB
+                const houseCutPercentage = stake === 5 ? 0.10 : 0.20;
                 const prizeAmount = Math.floor(game.total_pot * (1 - houseCutPercentage) * 100) / 100;
                 await Wallet.win(winnerInfo.userId, prizeAmount, currentGameIds[stake]);
                 winnerInfo.prize = prizeAmount;
