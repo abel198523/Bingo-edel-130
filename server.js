@@ -2255,11 +2255,12 @@ app.get('/api/check-admin/:telegramId', async (req, res) => {
         );
 
         const isEnvAdmin = ADMIN_CHAT_ID && tgId === ADMIN_CHAT_ID.toString();
-
-        res.json({ isAdmin: result.rows.length > 0 || isEnvAdmin });
+        const isAdmin = result.rows.length > 0 || isEnvAdmin;
+        
+        return res.json({ isAdmin: isAdmin });
     } catch (err) {
         console.error('Check admin error:', err);
-        res.json({ isAdmin: false });
+        return res.json({ isAdmin: false });
     }
 });
 
