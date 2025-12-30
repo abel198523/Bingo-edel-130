@@ -2057,6 +2057,14 @@ wss.on('connection', (ws) => {
 
 app.use(express.json());
 
+// Cache-control middleware - MUST come first
+app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    next();
+});
+
 // Route for path-based user ID (serves index.html for /user/:telegramId)
 // Must come BEFORE static middleware to properly handle /user/ routes
 app.get('/user/:telegramId(\\d+)', (req, res) => {
@@ -2070,11 +2078,6 @@ app.get('/admin', (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.use((req, res, next) => {
-    res.set('Cache-Control', 'no-store');
-    next();
-});
 
 app.post('/api/auth/register', async (req, res) => {
     try {
