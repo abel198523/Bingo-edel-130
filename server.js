@@ -39,6 +39,7 @@ let botUsername = null;
 let botUsernameReady = null;
 
 if (TELEGRAM_BOT_TOKEN) {
+    console.log("🤖 Initializing Telegram bot...");
     bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
         polling: {
             interval: 1000,
@@ -49,26 +50,36 @@ if (TELEGRAM_BOT_TOKEN) {
         }
     });
     
+    console.log("✅ Bot object created, attempting to get bot info...");
+    
     bot.on('polling_error', (error) => {
         if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
             console.log('Polling conflict detected - another instance may be running. Will retry...');
         } else {
-            console.error('Polling error:', error.message);
+            console.error('❌ Polling error:', error.message);
         }
     });
 
-    botUsernameReady = bot.getMe().then((botInfo) => {
+    // Set a timeout for getMe() to prevent hanging
+    const getMePromise = Promise.race([
+        bot.getMe(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('getMe() timeout')), 5000))
+    ]);
+    
+    botUsernameReady = getMePromise.then((botInfo) => {
         botUsername = botInfo.username;
-        console.log("Bot running in Polling mode.");
-        console.log("Bot username:", botInfo.username);
-        console.log("Bot ID:", botInfo.id);
+        console.log("✅ Bot running in Polling mode.");
+        console.log("✅ Bot username:", botInfo.username);
+        console.log("✅ Bot ID:", botInfo.id);
         console.log(`Referral links will use: https://t.me/${botInfo.username}?start=CODE`);
         if (MINI_APP_URL) {
             console.log(`Mini App URL (fallback): ${MINI_APP_URL}`);
         }
         return botInfo.username;
     }).catch((err) => {
-        console.error("Failed to get bot info:", err.message);
+        console.error("❌ Bot initialization failed:", err.message);
+        console.error("⚠️ Bot token may be invalid or Telegram API is unreachable");
+        console.error("⚠️ Please verify bot token from @BotFather");
         return null;
     });
 } else {
