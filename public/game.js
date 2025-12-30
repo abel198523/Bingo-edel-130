@@ -2,7 +2,7 @@ let currentUserId = null;
 let currentStake = 10;
 let ws = null;
 let isRegistered = false;
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeUserAndCheck();
