@@ -286,7 +286,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     
     if (miniAppUrlWithId) {
         // Show inline keyboard for Play button to allow guests or registered users
-        await bot.sendMessage(chatId, "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\nጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ።\n\n" + (isRegistered ? "💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።" : "🎁 ገብተው ሲመዘገቡ 10 ብር ቦነስ ያገኛሉ!"), {
+        await bot.sendMessage(chatId, "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\nጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ።", {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "▶️ Play Game", web_app: { url: miniAppUrlWithId } }]
@@ -300,16 +300,6 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
                 reply_markup: {
                     keyboard: [
                         [{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]
-                    ],
-                    resize_keyboard: true
-                }
-            });
-        } else {
-            // For guests, still offer registration via contact if they want it now
-            await bot.sendMessage(chatId, "ወዲያውኑ ለመመዝገብ ከፈለጉ:", {
-                reply_markup: {
-                    keyboard: [
-                        [{ text: "📱 Register", request_contact: true }]
                     ],
                     resize_keyboard: true
                 }

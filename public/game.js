@@ -143,49 +143,36 @@ async function initializeUserAsync() {
 }
 
 async function checkRegistrationAndProceed() {
-    if (!currentUserId) {
-        showRegistrationRequired();
-        return;
-    }
-    
-    // Show maintenance screen if maintenance mode is enabled
+    // Enable maintenance mode check first
     if (MAINTENANCE_MODE) {
         showMaintenanceScreen();
         return;
     }
-    
-    try {
-        const response = await fetch(`/api/check-registration/${currentUserId}`);
-        const data = await response.json();
-        
-        if (data.registered) {
-            isRegistered = true;
-            hideRegistrationRequired();
-            loadWallet();
-            initializeWebSocket();
-            initializeLandingScreen();
-            initializeFooterNavigation();
-            checkAdminStatus();
-            
-            // Handle hash-based navigation (from Telegram bot buttons)
-            setTimeout(() => {
-                const hash = window.location.hash.substring(1);
-                console.log('Hash detected:', hash);
-                if (hash === 'wallet') {
-                    const walletBtn = document.querySelector('[data-target="wallet"]');
-                    if (walletBtn) walletBtn.click();
-                } else if (hash === 'profile') {
-                    const profileBtn = document.querySelector('[data-target="profile"]');
-                    if (profileBtn) profileBtn.click();
-                }
-            }, 500);
-        } else {
-            showRegistrationRequired();
-        }
-    } catch (error) {
-        console.error('Error checking registration:', error);
-        showRegistrationRequired();
+
+    if (!currentUserId) {
+        console.warn('No User ID available, but proceeding as guest.');
     }
+    
+    // Auto-proceed to game instead of showing registration required
+    isRegistered = true; 
+    hideRegistrationRequired();
+    loadWallet();
+    initializeWebSocket();
+    initializeLandingScreen();
+    initializeFooterNavigation();
+    checkAdminStatus();
+    
+    // Handle hash-based navigation (from Telegram bot buttons)
+    setTimeout(() => {
+        const hash = window.location.hash.substring(1);
+        if (hash === 'wallet') {
+            const walletBtn = document.querySelector('[data-target="wallet"]');
+            if (walletBtn) walletBtn.click();
+        } else if (hash === 'profile') {
+            const profileBtn = document.querySelector('[data-target="profile"]');
+            if (profileBtn) profileBtn.click();
+        }
+    }, 500);
 }
 
 function showRegistrationRequired() {
