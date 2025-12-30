@@ -335,15 +335,19 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 });
 
 // Handle contact sharing for registration
-bot.on('contact', async (msg) => {
-    const chatId = msg.chat.id;
-    const contact = msg.contact;
-    const telegramId = contact.user_id;
-    const phoneNumber = contact.phone_number;
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
-    
-    try {
-        console.log(`[REG] Attempting to register user: ${telegramId}, username: ${msg.from.username}, phone: ${phoneNumber}`);
+    bot.on('contact', async (msg) => {
+        const chatId = msg.chat.id;
+        const contact = msg.contact;
+        const telegramId = contact.user_id || msg.from.id; // Fallback to msg.from.id if contact.user_id is missing
+        const phoneNumber = contact.phone_number;
+        const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
+        
+        try {
+            console.log(`[REG] Attempting to register user: ${telegramId}, username: ${msg.from.username}, phone: ${phoneNumber}`);
+            
+            if (!telegramId) {
+                throw new Error('Could not determine Telegram ID from contact or message');
+            }
         // Check if already registered
         const existingUser = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
         
