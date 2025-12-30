@@ -140,6 +140,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
     const REFERRAL_BONUS = 2.00;
     
     try {
+        console.log(`Awarding referral bonus: referrer ${referrerId}, referred ${referredUserId}`);
         // Check if bonus already awarded
         const existingBonus = await pool.query(
             'SELECT id FROM referrals WHERE referred_user_id = $1 AND bonus_awarded = true',
@@ -147,6 +148,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
         );
         
         if (existingBonus.rows.length > 0) {
+            console.log(`Referral bonus already awarded for user ${referredUserId}`);
             return false; // Already awarded
         }
         
@@ -341,10 +343,12 @@ bot.on('contact', async (msg) => {
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}?tg_id=${telegramId}` : null;
     
     try {
+        console.log(`[REG] Attempting to register user: ${telegramId}, username: ${msg.from.username}, phone: ${phoneNumber}`);
         // Check if already registered
         const existingUser = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
         
         if (existingUser.rows.length > 0) {
+            console.log(`[REG] User ${telegramId} already registered.`);
             bot.sendMessage(chatId, "እርስዎ ቀድሞ ተመዝግበዋል! 'Play' ን ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
                 reply_markup: getMainKeyboard(telegramId)
             });
@@ -354,14 +358,19 @@ bot.on('contact', async (msg) => {
         // Register new user with 10 ETB bonus
         const username = msg.from.username || `Player_${telegramId}`;
         const userResult = await pool.query(
-            'INSERT INTO users (telegram_id, username, phone_number, is_registered) VALUES ($1, $2, $3, $4) RETURNING id',
+            'INSERT INTO users (telegram_id, username, phone_number, is_registered) VALUES ($1, $2, $3, $4) ON CONFLICT (telegram_id) DO UPDATE SET username = EXCLUDED.username, phone_number = EXCLUDED.phone_number, is_registered = true RETURNING id',
             [telegramId, username, phoneNumber, true]
         );
         
-        // Create wallet with 10 ETB bonus
+        if (!userResult.rows[0]) {
+            throw new Error('Failed to insert or update user in database');
+        }
+
+        // Create wallet with 10 ETB bonus if it doesn't exist
         const userId = userResult.rows[0].id;
+        console.log(`[REG] User ID in DB: ${userId}. Ensuring wallet exists...`);
         await pool.query(
-            'INSERT INTO wallets (user_id, balance) VALUES ($1, $2)',
+            'INSERT INTO wallets (user_id, balance) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING',
             [userId, 10.00]
         );
         
@@ -372,6 +381,7 @@ bot.on('contact', async (msg) => {
         // Check if user was referred by someone (from userState)
         const state = userStates.get(telegramId);
         if (state && state.referrerCode) {
+            console.log(`[REG] User ${telegramId} referred by: ${state.referrerCode}`);
             const referrerResult = await pool.query('SELECT id FROM users WHERE referral_code = $1', [state.referrerCode]);
             if (referrerResult.rows.length > 0) {
                 const referrerId = referrerResult.rows[0].id;
@@ -380,7 +390,7 @@ bot.on('contact', async (msg) => {
             }
         }
         
-        console.log(`New user registered: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
+        console.log(`[REG] New user registered successfully: ${telegramId} - ${phoneNumber} - Referral: ${referralCode}`);
         
         let welcomeMessage = `✅ በተሳካ ሁኔታ ተመዝግበዋል!\n\n🎁 10 ብር የእንኳን ደህና መጡ ቦነስ አግኝተዋል!\n\n`;
         
@@ -398,7 +408,9 @@ bot.on('contact', async (msg) => {
         });
         
     } catch (error) {
-        console.error('Registration error:', error.message || error);
+        console.error('[REG ERROR] Full error object:', error);
+        console.error('[REG ERROR] Message:', error.message || error);
+        if (error.stack) console.error('[REG ERROR] Stack:', error.stack);
         bot.sendMessage(chatId, "ይቅርታ፣ በመመዝገብ ላይ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።");
     }
 });
