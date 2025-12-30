@@ -50,10 +50,19 @@ async function initializeUserAsync() {
                 }
 
                 // PRIORITY 0: Check URL path for user ID (e.g., /user/123456789)
-                const pathMatch = window.location.pathname.match(/\/user\/(\d+)/);
-                if (pathMatch && pathMatch[1]) {
-                    currentUserId = parseInt(pathMatch[1]);
-                    console.log('Telegram ID from path:', currentUserId);
+                const pathParts = window.location.pathname.split('/');
+                const userIdx = pathParts.indexOf('user');
+                if (userIdx !== -1 && pathParts[userIdx + 1]) {
+                    currentUserId = parseInt(pathParts[userIdx + 1]);
+                    console.log('Telegram ID from path (split):', currentUserId);
+                }
+                
+                if (!currentUserId) {
+                    const pathMatch = window.location.pathname.match(/\/user\/(\d+)/);
+                    if (pathMatch && pathMatch[1]) {
+                        currentUserId = parseInt(pathMatch[1]);
+                        console.log('Telegram ID from path (match):', currentUserId);
+                    }
                 }
 
                 // PRIORITY 1: Check URL parameter (fallback)

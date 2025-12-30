@@ -186,7 +186,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
 
 // Helper function to get main keyboard
 function getMainKeyboard(telegramId) {
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
+    const miniAppUrlWithId = telegramId ? (MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null) : MINI_APP_URL;
     console.log('Generated Mini App URL:', miniAppUrlWithId);
     
     const keyboard = [
@@ -281,7 +281,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         console.error('Error checking user:', err.message || err);
     }
     
-    const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
+    const miniAppUrlWithId = telegramId ? (MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null) : MINI_APP_URL;
     console.log('Start command - Mini App URL:', miniAppUrlWithId);
     
     if (miniAppUrlWithId) {
@@ -330,7 +330,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         const contact = msg.contact;
         const telegramId = contact.user_id || msg.from.id; // Fallback to msg.from.id if contact.user_id is missing
         const phoneNumber = contact.phone_number;
-        const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
+        const miniAppUrlWithId = telegramId ? (MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null) : MINI_APP_URL;
         
         try {
             console.log(`[REG] Attempting to register user: ${telegramId}, username: ${msg.from.username}, phone: ${phoneNumber}`);
