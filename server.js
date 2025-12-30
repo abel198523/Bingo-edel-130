@@ -282,26 +282,39 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
     console.log('Start command - Mini App URL:', miniAppUrlWithId);
     
-    if (isRegistered && miniAppUrlWithId) {
-        // User is registered - show inline keyboard for Play button to preserve query params
-        await bot.sendMessage(chatId, "እንኳን ደህና መጡ! ጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ።\n\n💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።", {
+    if (miniAppUrlWithId) {
+        // Show inline keyboard for Play button to allow guests or registered users
+        await bot.sendMessage(chatId, "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\nጨዋታውን ለመጀመር ከታች ያለውን ቁልፍ ይጫኑ።\n\n" + (isRegistered ? "💳 ለዲፖዚትና ማውጣት 'Wallet' ታብ ውስጥ ይገቡ።" : "🎁 ገብተው ሲመዘገቡ 10 ብር ቦነስ ያገኛሉ!"), {
             reply_markup: {
                 inline_keyboard: [
                     [{ text: "▶️ Play Game", web_app: { url: miniAppUrlWithId } }]
                 ]
             }
         });
-        // Also show the regular keyboard for other functions
-        await bot.sendMessage(chatId, "ሌሎች አማራጮች:", {
-            reply_markup: {
-                keyboard: [
-                    [{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]
-                ],
-                resize_keyboard: true
-            }
-        });
+        
+        // For registered users, show the regular keyboard too
+        if (isRegistered) {
+            await bot.sendMessage(chatId, "ሌሎች አማራጮች:", {
+                reply_markup: {
+                    keyboard: [
+                        [{ text: "💰 Check Balance" }, { text: "🔗 ሪፈራል" }]
+                    ],
+                    resize_keyboard: true
+                }
+            });
+        } else {
+            // For guests, still offer registration via contact if they want it now
+            await bot.sendMessage(chatId, "ወዲያውኑ ለመመዝገብ ከፈለጉ:", {
+                reply_markup: {
+                    keyboard: [
+                        [{ text: "📱 Register", request_contact: true }]
+                    ],
+                    resize_keyboard: true
+                }
+            });
+        }
     } else {
-        // User is not registered or no Mini App URL - show Register button
+        // Fallback if URL is missing
         let welcomeMsg = "እንኳን ደህና መጡ ወደ Edele Bingo! 🎉\n\n";
         if (startParam) {
             welcomeMsg += "🎁 በሪፈራል ተጋብዘዋል!\n\n";
