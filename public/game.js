@@ -199,20 +199,25 @@ function showRegistrationRequired() {
     if (gameScreen) gameScreen.style.display = 'none';
     if (profileScreen) profileScreen.style.display = 'none';
     
-    // Show the auth screen with registration form
-    const authScreen = document.getElementById('auth-screen');
-    if (authScreen) {
-        authScreen.style.display = 'flex';
-        // Show register form by default
-        const registerForm = document.getElementById('register-form');
-        const loginForm = document.getElementById('login-form');
-        if (registerForm && loginForm) {
-            registerForm.style.display = 'block';
-            loginForm.style.display = 'none';
-        }
-        // Initialize the registration handler
-        initializeAuthHandlers();
+    let regScreen = document.getElementById('registration-required-screen');
+    if (!regScreen) {
+        regScreen = document.createElement('div');
+        regScreen.id = 'registration-required-screen';
+        regScreen.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;';
+        regScreen.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; text-align: center; padding: 20px;">
+                <h1 style="font-size: 2em; margin-bottom: 20px;">🎰 Edele Bingo</h1>
+                <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 300px;">
+                    <p style="font-size: 1.2em; margin-bottom: 20px;">⚠️ አልተመዘገቡም</p>
+                    <p style="margin-bottom: 20px;">ይህን ጨዋታ ለመጫወት መጀመሪያ መመዝገብ አለብዎት።</p>
+                    <p style="margin-bottom: 20px;">እባክዎ ወደ Telegram ቦት ተመልሰው <strong>"📱 Register"</strong> ቁልፍን ይጫኑ።</p>
+                    <p style="font-size: 0.9em; color: #aaa;">ከተመዘገቡ በኋላ 10 ብር ቦነስ ያገኛሉ! 🎁</p>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(regScreen);
     }
+    regScreen.style.display = 'block';
 }
 
 function hideRegistrationRequired() {
