@@ -199,25 +199,20 @@ function showRegistrationRequired() {
     if (gameScreen) gameScreen.style.display = 'none';
     if (profileScreen) profileScreen.style.display = 'none';
     
-    let regScreen = document.getElementById('registration-required-screen');
-    if (!regScreen) {
-        regScreen = document.createElement('div');
-        regScreen.id = 'registration-required-screen';
-        regScreen.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;';
-        regScreen.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; text-align: center; padding: 20px;">
-                <h1 style="font-size: 2em; margin-bottom: 20px;">🎰 Edele Bingo</h1>
-                <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; max-width: 300px;">
-                    <p style="font-size: 1.2em; margin-bottom: 20px;">⚠️ አልተመዘገቡም</p>
-                    <p style="margin-bottom: 20px;">ይህን ጨዋታ ለመጫወት መጀመሪያ መመዝገብ አለብዎት።</p>
-                    <p style="margin-bottom: 20px;">እባክዎ ወደ Telegram ቦት ተመልሰው <strong>"📱 Register"</strong> ቁልፍን ይጫኑ።</p>
-                    <p style="font-size: 0.9em; color: #aaa;">ከተመዘገቡ በኋላ 10 ብር ቦነስ ያገኛሉ! 🎁</p>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(regScreen);
+    // Show the auth screen with registration form
+    const authScreen = document.getElementById('auth-screen');
+    if (authScreen) {
+        authScreen.style.display = 'flex';
+        // Show register form by default
+        const registerForm = document.getElementById('register-form');
+        const loginForm = document.getElementById('login-form');
+        if (registerForm && loginForm) {
+            registerForm.style.display = 'block';
+            loginForm.style.display = 'none';
+        }
+        // Initialize the registration handler
+        initializeAuthHandlers();
     }
-    regScreen.style.display = 'block';
 }
 
 function hideRegistrationRequired() {
@@ -239,6 +234,125 @@ function showMaintenanceScreen() {
     if (gameScreen) gameScreen.style.display = 'none';
     if (profileScreen) profileScreen.style.display = 'none';
     if (maintenanceScreen) maintenanceScreen.style.display = 'flex';
+}
+
+function initializeAuthHandlers() {
+    // Register form
+    const registerBtn = document.getElementById('register-btn');
+    if (registerBtn) {
+        registerBtn.onclick = async () => {
+            const username = document.getElementById('register-username')?.value.trim();
+            const password = document.getElementById('register-password')?.value.trim();
+            const confirmPassword = document.getElementById('register-confirm-password')?.value.trim();
+            
+            if (!username || !password || !confirmPassword) {
+                alert('ሁሉም መስኮች ሙሉ ማድረግ አለበት');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                alert('ይለፍ ቃል አይስማማም');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    currentUserId = data.user.id;
+                    isRegistered = true;
+                    hideRegistrationRequired();
+                    loadWallet();
+                    initializeWebSocket();
+                    initializeLandingScreen();
+                    initializeFooterNavigation();
+                    checkAdminStatus();
+                    alert('✅ በሳካ ተመዘገቡ!');
+                } else {
+                    alert(data.error || 'ቆርጠህ ተመዝገብ ሙከራ');
+                }
+            } catch (err) {
+                console.error('Registration error:', err);
+                alert('ብርሳ፣ አንድ ችግር ተከስቷል');
+            }
+        };
+    }
+    
+    // Login form
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) {
+        loginBtn.onclick = async () => {
+            const username = document.getElementById('login-username')?.value.trim();
+            const password = document.getElementById('login-password')?.value.trim();
+            
+            if (!username || !password) {
+                alert('መስተሪ ስም እና ይለፍ ቃል አስፈላጊ');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                
+                if (data.token) {
+                    localStorage.setItem('token', data.token);
+                    currentUserId = data.user.id;
+                    isRegistered = true;
+                    hideRegistrationRequired();
+                    loadWallet();
+                    initializeWebSocket();
+                    initializeLandingScreen();
+                    initializeFooterNavigation();
+                    checkAdminStatus();
+                    alert('✅ በሳካ ገባሉ!');
+                } else {
+                    alert(data.error || 'ውጉባዊ መስተሪ ስም ወይም ይለፍ ቃል');
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                alert('ብርሳ፣ አንድ ችግር ተከስቷል');
+            }
+        };
+    }
+    
+    // Switch to register form
+    const showRegisterLink = document.getElementById('show-register');
+    if (showRegisterLink) {
+        showRegisterLink.onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('register-form').style.display = 'block';
+        };
+    }
+    
+    // Switch to login form
+    const showLoginLink = document.getElementById('show-login');
+    if (showLoginLink) {
+        showLoginLink.onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('register-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+        };
+    }
+    
+    // Close button
+    const closeAuthBtn = document.getElementById('close-auth');
+    if (closeAuthBtn) {
+        closeAuthBtn.onclick = () => {
+            const authScreen = document.getElementById('auth-screen');
+            if (authScreen) authScreen.style.display = 'none';
+        };
+    }
 }
 
 function initializeFooterNavigation() {
@@ -352,24 +466,9 @@ async function loadProfile() {
                     copyBtn.onclick = () => {
                         navigator.clipboard.writeText(profile.referralLink).then(() => {
                             copyBtn.textContent = 'ተኮፒዋል!';
-                            setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
-                        }).catch(() => {
-                            alert('ሊንኩ: ' + profile.referralLink);
-                        });
-                    };
-                }
-            } else if (profile.referralCode) {
-                // Fallback to referral code only
-                if (referralCodeEl) {
-                    referralCodeEl.textContent = profile.referralCode;
-                }
-                if (copyBtn) {
-                    copyBtn.onclick = () => {
-                        navigator.clipboard.writeText(profile.referralCode).then(() => {
-                            copyBtn.textContent = 'ተኮፒዋል!';
-                            setTimeout(() => { copyBtn.textContent = 'ኮፒ'; }, 2000);
-                        }).catch(() => {
-                            alert('ኮዱ: ' + profile.referralCode);
+                            setTimeout(() => {
+                                copyBtn.textContent = 'ቅዳ';
+                            }, 2000);
                         });
                     };
                 }
@@ -380,1173 +479,24 @@ async function loadProfile() {
     }
 }
 
-function initializeLandingScreen() {
-    const landingScreen = document.getElementById('landing-screen');
-    const selectionScreen = document.getElementById('selection-screen');
-    const gameScreen = document.getElementById('game-screen');
-    const startBtn = document.getElementById('start-selection-btn');
-    const stakeButtons = document.querySelectorAll('.stake-btn');
-    
-    stakeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const stake = parseInt(this.dataset.stake);
-            currentStake = stake;
-            window.currentStake = stake;
-            
-            stakeButtons.forEach(b => b.classList.remove('active-stake'));
-            this.classList.add('active-stake');
-            
-            if (startBtn) {
-                startBtn.textContent = `▷ Play ${stake} ETB`;
-            }
-            
-            const currentStakeDisplay = document.getElementById('current-stake');
-            if (currentStakeDisplay) {
-                currentStakeDisplay.textContent = stake;
-            }
-        });
-    });
-    
-    if (startBtn) {
-        startBtn.addEventListener('click', function() {
-            if (landingScreen) landingScreen.style.display = 'none';
-            if (selectionScreen) selectionScreen.style.display = 'flex';
-            
-            generateCardSelection();
-        });
-    }
-    
-    const confirmCardBtn = document.getElementById('confirm-card-btn');
-    if (confirmCardBtn) {
-        confirmCardBtn.addEventListener('click', async function() {
-            if (selectedCardId) {
-                const result = await handleCardConfirmation(selectedCardId);
-                if (result.success) {
-                    if (selectionScreen) selectionScreen.style.display = 'none';
-                    if (gameScreen) gameScreen.style.display = 'flex';
-                    renderPlayerCard(selectedCardId);
-                } else {
-                    alert(result.message || 'ካርድ ለማረጋገጥ አልተቻለም');
-                }
-            }
-        });
-    }
+function processReferral(userId, startParam, referralCode) {
+    console.log('Processing referral for user:', userId, 'code:', referralCode || startParam);
 }
 
-let selectedCardId = null;
-let previewCardId = null;
-
-let takenCards = new Set();
-let playerUsername = 'Anonymous';
-
-function generateCardSelection() {
-    const grid = document.getElementById('card-selection-grid');
-    if (!grid) return;
-    
-    grid.innerHTML = '';
-    
-    for (let cardId = 1; cardId <= 100; cardId++) {
-        const cardElement = document.createElement('div');
-        cardElement.className = 'card-number-btn';
-        cardElement.dataset.cardId = cardId;
-        cardElement.textContent = cardId;
-        
-        // Mark as taken if in takenCards set
-        if (takenCards.has(cardId)) {
-            cardElement.classList.add('taken');
-            cardElement.style.backgroundColor = '#ff4757';
-            cardElement.style.color = '#ffffff';
-            cardElement.style.fontWeight = 'bold';
-            cardElement.style.opacity = '1';
-            cardElement.style.cursor = 'not-allowed';
-            cardElement.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
-        } else {
-            cardElement.addEventListener('click', function() {
-                if (!selectedCardId) {
-                    showCardPreview(cardId);
-                }
-            });
-        }
-        
-        grid.appendChild(cardElement);
+function parseReferralCode(code) {
+    if (!code) return null;
+    if (code.startsWith('ref_')) {
+        return code.substring(4);
     }
+    return code;
 }
 
-function showCardPreview(cardId) {
-    if (selectedCardId) return; // Prevent previewing if card already confirmed
-    previewCardId = cardId;
-    const modal = document.getElementById('card-preview-modal');
-    const previewGrid = document.getElementById('preview-card-grid');
-    const previewTitle = document.getElementById('preview-card-title');
-    
-    if (!modal || !previewGrid) return;
-    
-    // Assuming BINGO_CARDS is defined globally (e.g., in card.js)
-    const cardData = BINGO_CARDS[cardId];
-    if (!cardData) return;
-    
-    previewTitle.textContent = `ካርድ #${cardId}`;
-    previewGrid.innerHTML = '';
-    
-    cardData.forEach((row, rowIndex) => {
-        row.forEach((num, colIndex) => {
-            const cell = document.createElement('div');
-            cell.className = 'preview-cell';
-            
-            if (rowIndex === 2 && colIndex === 2) {
-                cell.classList.add('free-space');
-                cell.textContent = '★';
-            } else {
-                cell.textContent = num;
-            }
-            
-            previewGrid.appendChild(cell);
-        });
-    });
-    
-    modal.style.display = 'flex';
-}
-
-function hideCardPreview() {
-    const modal = document.getElementById('card-preview-modal');
-    if (modal) {
-        modal.style.display = 'none';
+function parseReferralFromStartParam(param) {
+    if (!param) return null;
+    if (param.startsWith(' ')) {
+        return param.substring(1);
     }
-    previewCardId = null;
-}
-
-async function confirmPreviewCard() {
-    if (previewCardId && !selectedCardId) {
-        selectedCardId = previewCardId;
-        
-        // Notify server about card selection
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'select_card',
-                cardId: selectedCardId
-            }));
-        }
-        
-        // Final confirmation flow (merging confirmPreview and handleCardConfirmation)
-        const result = await handleCardConfirmation(selectedCardId);
-        if (result.success) {
-            // Stay on selection screen until timer ends
-            // The phase_change 'game' message will handle the transition
-            hideCardPreview();
-            
-            // Visual feedback that card is confirmed
-            const status = document.getElementById('confirmation-status');
-            if (status) {
-                status.textContent = `ካርድ #${selectedCardId} ተረጋግጧል! ጨዋታ እስኪጀምር ይጠብቁ...`;
-                status.style.display = 'block';
-                status.style.color = '#00d984';
-            }
-        } else {
-            selectedCardId = null; // Reset if failed
-            alert(result.message || 'ካርድ ለማረጋገጥ አልተቻለም');
-        }
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const backBtn = document.getElementById('preview-back-btn');
-    const confirmPreviewBtn = document.getElementById('preview-confirm-btn');
-    
-    if (backBtn) {
-        backBtn.addEventListener('click', hideCardPreview);
-    }
-    
-    if (confirmPreviewBtn) {
-        confirmPreviewBtn.addEventListener('click', confirmPreviewCard);
-    }
-});
-
-function renderPlayerCard(cardId) {
-    const cardContainer = document.getElementById('player-bingo-card');
-    if (!cardContainer) return;
-    
-    const cardData = BINGO_CARDS[cardId];
-    if (!cardData) return;
-    
-    cardContainer.innerHTML = '';
-    
-    cardData.forEach((row, rowIndex) => {
-        row.forEach((num, colIndex) => {
-            const cell = document.createElement('div');
-            cell.className = 'player-card-cell';
-            cell.dataset.number = num;
-            
-            if (rowIndex === 2 && colIndex === 2) {
-                cell.classList.add('free-space', 'marked');
-                cell.textContent = '★';
-            } else {
-                cell.textContent = num;
-            }
-            
-            cell.addEventListener('click', function() {
-                if (num !== 0) {
-                    // Only allow clicking if not already marked
-                    if (this.classList.contains('marked')) {
-                        return; // Can't click already selected cards
-                    }
-                    this.classList.add('marked');
-                }
-            });
-            
-            cardContainer.appendChild(cell);
-        });
-    });
-}
-
-function parseReferralCode(startParam) {
-    if (!startParam) return null;
-    if (startParam.startsWith('ref_')) {
-        return startParam.substring(4);
-    }
-    return startParam;
-}
-
-async function processReferral(telegramId, startParam, referralCode) {
-    try {
-        const response = await fetch('/api/referral/process', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegramId: telegramId,
-                startParam: startParam,
-                referralCode: referralCode
-            })
-        });
-        const data = await response.json();
-        if (data.success) {
-            console.log('Referral processed:', data.message);
-            if (data.pending && data.referralCode) {
-                localStorage.setItem('referralCode', data.referralCode);
-            }
-        }
-        return data;
-    } catch (error) {
-        console.error('Error processing referral:', error);
-        return { success: false };
-    }
-}
-
-
-async function loadWallet() {
-    if (!currentUserId) {
-        // Show message if user ID is not available
-        const walletHistoryEl = document.getElementById('wallet-history-list');
-        if (walletHistoryEl) {
-            walletHistoryEl.innerHTML = '<div class="history-empty">ተጠቃሚ ሪጀስተር ያልሆነ ነው</div>';
-        }
-        const walletBalanceEl = document.getElementById('wallet-balance');
-        if (walletBalanceEl) {
-            walletBalanceEl.textContent = '0.00';
-        }
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/wallet/${currentUserId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            updateWalletDisplay(data.balance);
-            
-            // Update wallet stats
-            const totalGamesEl = document.getElementById('wallet-total-games');
-            if (totalGamesEl) {
-                totalGamesEl.textContent = data.totalGames || 0;
-            }
-            
-            const winsEl = document.getElementById('wallet-wins');
-            if (winsEl) {
-                winsEl.textContent = data.wins || 0;
-            }
-            
-            // Update last updated time
-            const updatedEl = document.getElementById('wallet-updated');
-            if (updatedEl) {
-                const now = new Date();
-                updatedEl.textContent = `Last updated: ${now.toLocaleTimeString('am-ET')}`;
-            }
-        }
-    } catch (error) {
-        console.error('Error loading wallet:', error);
-    }
-    
-    // Load pending withdrawals
-    loadUserWithdrawals();
-}
-
-async function loadWalletData() {
-    return await loadWallet();
-}
-
-function initializeWallet() {
-    // Set default values first
-    const walletBalanceEl = document.getElementById('wallet-balance');
-    if (walletBalanceEl && !walletBalanceEl.textContent) {
-        walletBalanceEl.textContent = '0.00';
-    }
-    const walletGamesEl = document.getElementById('wallet-total-games');
-    if (walletGamesEl && !walletGamesEl.textContent) {
-        walletGamesEl.textContent = '0';
-    }
-    const walletWinsEl = document.getElementById('wallet-wins');
-    if (walletWinsEl && !walletWinsEl.textContent) {
-        walletWinsEl.textContent = '0';
-    }
-    
-    loadWallet();
-    
-    // Deposit button
-    const depositBtn = document.getElementById('wallet-deposit-btn');
-    if (depositBtn) {
-        depositBtn.addEventListener('click', () => {
-            const depositModal = document.getElementById('deposit-modal');
-            if (depositModal) depositModal.style.display = 'flex';
-        });
-    }
-    
-    // Deposit modal close
-    const depositClose = document.getElementById('deposit-modal-close');
-    if (depositClose) {
-        depositClose.addEventListener('click', () => {
-            const depositModal = document.getElementById('deposit-modal');
-            if (depositModal) depositModal.style.display = 'none';
-        });
-    }
-    
-    // Amount buttons in deposit
-    const amountBtns = document.querySelectorAll('.amount-btn');
-    amountBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('deposit-custom-amount').value = this.dataset.amount;
-        });
-    });
-    
-    // Withdrawal button
-    const withdrawBtn = document.getElementById('wallet-withdraw-btn');
-    if (withdrawBtn) {
-        withdrawBtn.addEventListener('click', () => {
-            const withdrawModal = document.getElementById('withdraw-modal');
-            if (withdrawModal) withdrawModal.style.display = 'flex';
-        });
-    }
-    
-    // Withdraw modal close
-    const withdrawClose = document.getElementById('withdraw-modal-close');
-    if (withdrawClose) {
-        withdrawClose.addEventListener('click', () => {
-            const withdrawModal = document.getElementById('withdraw-modal');
-            if (withdrawModal) withdrawModal.style.display = 'none';
-        });
-    }
-    
-    // Promo Code Redeem
-    const promoBtn = document.getElementById('promo-redeem-btn');
-    if (promoBtn) {
-        promoBtn.addEventListener('click', async () => {
-            const code = document.getElementById('promo-code-input').value.trim();
-            if (!code) {
-                const msgEl = document.getElementById('promo-message');
-                if (msgEl) {
-                    msgEl.textContent = 'ኮድ ያስገቡ!';
-                    msgEl.style.display = 'block';
-                    msgEl.style.color = '#ff4757';
-                }
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/redeem-promo', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({telegramId: currentUserId, promoCode: code})
-                });
-                const data = await res.json();
-                const msgEl = document.getElementById('promo-message');
-                
-                if (msgEl) {
-                    msgEl.textContent = data.message || 'Unknown error';
-                    msgEl.style.display = 'block';
-                    msgEl.style.color = data.success ? '#00d984' : '#ff4757';
-                    
-                    if (data.success) {
-                        document.getElementById('promo-code-input').value = '';
-                        setTimeout(() => loadWallet(), 500);
-                    }
-                }
-            } catch(e) { 
-                console.error('Promo error:', e); 
-                const msgEl = document.getElementById('promo-message');
-                if (msgEl) {
-                    msgEl.textContent = 'Network error: ' + e.message;
-                    msgEl.style.display = 'block';
-                    msgEl.style.color = '#ff4757';
-                }
-            }
-        });
-    }
-    
-    // Refresh buttons
-    const walletRefresh = document.getElementById('wallet-refresh-btn');
-    if (walletRefresh) {
-        walletRefresh.addEventListener('click', loadWallet);
-    }
-    
-    // Deposit submit
-    const depositSubmit = document.getElementById('deposit-submit-btn');
-    if (depositSubmit) {
-        depositSubmit.addEventListener('click', async () => {
-            const amount = document.getElementById('deposit-custom-amount').value;
-            const reference = document.getElementById('deposit-reference').value;
-            if (!amount || !reference) return alert('መጠን እና ማረጋገጫ ቁጥር ሁለቱም ተራ አስፈላጊ!');
-            try {
-                const res = await fetch('/api/deposits', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), reference})
-                });
-                const data = await res.json();
-                alert(data.message || 'ጥያቄ ተላክ!');
-                document.getElementById('deposit-modal').style.display = 'none';
-                document.getElementById('deposit-reference').value = '';
-                document.getElementById('deposit-custom-amount').value = '';
-            } catch(e) { alert('ስህተት!'); console.error(e); }
-        });
-    }
-    
-    // Withdraw submit
-    const withdrawSubmit = document.getElementById('withdraw-submit-btn');
-    if (withdrawSubmit) {
-        withdrawSubmit.addEventListener('click', async () => {
-            const amount = document.getElementById('withdraw-amount').value;
-            const name = document.getElementById('withdraw-name').value;
-            const phone = document.getElementById('withdraw-phone').value;
-            if (!amount || !name || !phone) return alert('ሁሉም መስክ ተራ አስፈላጊ ነው!');
-            try {
-                const res = await fetch('/api/withdrawals', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({telegram_id: currentUserId, amount: parseFloat(amount), account_name: name, phone_number: phone})
-                });
-                const data = await res.json();
-                if(res.ok) {
-                    alert(data.message || 'ጥያቄ ተላክ! ገንዘቡ ወድቅ ሂሳብዎ ላይ ይቆይ ድረስ እንደገና ወሰድ።');
-                    document.getElementById('withdraw-modal').style.display = 'none';
-                    document.getElementById('withdraw-amount').value = '';
-                    document.getElementById('withdraw-name').value = '';
-                    document.getElementById('withdraw-phone').value = '';
-                    loadWallet();
-                } else {
-                    alert('ስህተት: ' + (data.message || 'ጥያቄ ወደገና ሞክር'));
-                }
-            } catch(e) { alert('ስህተት!'); console.error(e); }
-        });
-    }
-}
-
-function loadAdminData() {
-    loadAdminStats();
-    loadPendingItems();
-    setupAdminTabs();
-}
-
-async function loadAdminStats() {
-    try {
-        const response = await fetch('/api/admin/stats');
-        const data = await response.json();
-        document.getElementById('admin-total-users').textContent = data.totalUsers || 0;
-        document.getElementById('admin-pending-deposits').textContent = data.pendingDeposits || 0;
-        document.getElementById('admin-pending-withdrawals').textContent = data.pendingWithdrawals || 0;
-        document.getElementById('admin-today-games').textContent = data.todayGames || 0;
-    } catch(e) { console.error('Failed to load admin stats:', e); }
-}
-
-async function loadPendingItems() {
-    try {
-        const response = await fetch('/api/admin/pending');
-        const data = await response.json();
-        displayPendingDeposits(data.deposits || []);
-        displayPendingWithdrawals(data.withdrawals || []);
-    } catch(e) { console.error('Failed to load pending items:', e); }
-}
-
-function displayPendingDeposits(deposits) {
-    const container = document.getElementById('admin-deposits-list');
-    if (!container) return;
-    
-    if (deposits.length === 0) {
-        container.innerHTML = '<p class="admin-empty">ምንም ጥያቄ የለም</p>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    deposits.forEach(d => {
-        const item = document.createElement('div');
-        item.className = 'admin-list-item';
-        item.innerHTML = `
-            <div class="admin-item-info">
-                <strong>${d.username}</strong> - ${d.amount} ብር
-                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">
-                    📱 ${d.payment_method} | ${d.confirmation_code}
-                </div>
-            </div>
-            <div class="admin-item-actions">
-                <button class="admin-btn-approve" data-id="${d.id}" data-action="approve">✓ ግበር</button>
-                <button class="admin-btn-reject" data-id="${d.id}" data-action="reject">✗ ውድቅ</button>
-            </div>
-        `;
-        
-        // Add event listeners
-        item.querySelector('.admin-btn-approve').addEventListener('click', async () => {
-            await approveDeposit(d.id);
-        });
-        item.querySelector('.admin-btn-reject').addEventListener('click', async () => {
-            await rejectDeposit(d.id);
-        });
-        
-        container.appendChild(item);
-    });
-}
-
-function displayPendingWithdrawals(withdrawals) {
-    const container = document.getElementById('admin-withdrawals-list');
-    if (!container) return;
-    
-    if (withdrawals.length === 0) {
-        container.innerHTML = '<p class="admin-empty">ምንም ጥያቄ የለም</p>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    withdrawals.forEach(w => {
-        const item = document.createElement('div');
-        item.className = 'admin-list-item';
-        item.innerHTML = `
-            <div class="admin-item-info">
-                <strong>${w.username}</strong> - ${w.amount} ብር
-                <div style="font-size: 0.9em; color: #aaa; margin-top: 5px;">
-                    👤 ${w.account_holder_name} | 📱 ${w.phone_number}
-                </div>
-            </div>
-            <div class="admin-item-actions">
-                <button class="admin-btn-approve" data-id="${w.id}" data-action="approve">✓ ግበር</button>
-                <button class="admin-btn-reject" data-id="${w.id}" data-action="reject">✗ ውድቅ</button>
-            </div>
-        `;
-        
-        // Add event listeners
-        item.querySelector('.admin-btn-approve').addEventListener('click', async () => {
-            await approveWithdrawal(w.id);
-        });
-        item.querySelector('.admin-btn-reject').addEventListener('click', async () => {
-            await rejectWithdrawal(w.id);
-        });
-        
-        container.appendChild(item);
-    });
-}
-
-async function approveDeposit(id) {
-    try {
-        const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: 'POST' });
-        const data = await res.json();
-        if(res.ok) { 
-            alert('✓ ዲፖዚት ተጸድቋል'); 
-            loadAdminStats();
-            loadPendingItems(); 
-        } else {
-            alert('Error: ' + (data.error || 'Failed to approve'));
-        }
-    } catch(e) { 
-        console.error('Approve deposit error:', e);
-        alert('Network error!'); 
-    }
-}
-
-async function rejectDeposit(id) {
-    try {
-        const res = await fetch(`/api/admin/deposits/${id}/reject`, { method: 'POST' });
-        const data = await res.json();
-        if(res.ok) { 
-            alert('✓ ዲፖዚት ውድቅ ተደረገ'); 
-            loadAdminStats();
-            loadPendingItems(); 
-        } else {
-            alert('Error: ' + (data.error || 'Failed to reject'));
-        }
-    } catch(e) { 
-        console.error('Reject deposit error:', e);
-        alert('Network error!'); 
-    }
-}
-
-async function approveWithdrawal(id) {
-    try {
-        const res = await fetch(`/api/admin/withdrawals/${id}/approve`, { method: 'POST' });
-        const data = await res.json();
-        if(res.ok) { 
-            alert('✓ ማውጣት ተጸድቋል'); 
-            loadAdminStats();
-            loadPendingItems(); 
-        } else {
-            alert('Error: ' + (data.error || 'Failed to approve'));
-        }
-    } catch(e) { 
-        console.error('Approve withdrawal error:', e);
-        alert('Network error!'); 
-    }
-}
-
-async function rejectWithdrawal(id) {
-    try {
-        const res = await fetch(`/api/admin/withdrawals/${id}/reject`, { method: 'POST' });
-        const data = await res.json();
-        if(res.ok) { 
-            alert('✓ ማውጣት ውድቅ ተደረገ'); 
-            loadAdminStats();
-            loadPendingItems(); 
-        } else {
-            alert('Error: ' + (data.error || 'Failed to reject'));
-        }
-    } catch(e) { 
-        console.error('Reject withdrawal error:', e);
-        alert('Network error!'); 
-    }
-}
-
-function openAddBalanceModal(username, telegramId) {
-    const amount = prompt(`💰 ${username} ላይ መጠን ጨምር (ብር):`);
-    if(amount && !isNaN(amount) && amount > 0) {
-        addBalanceToUser(telegramId, parseFloat(amount));
-    }
-}
-
-async function addBalanceToUser(telegramId, amount) {
-    try {
-        const res = await fetch('/api/admin/add-balance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ telegramId, amount })
-        });
-        const data = await res.json();
-        alert(data.message || 'Success!');
-        loadAdminStats();
-        loadPendingItems();
-    } catch(e) { alert('Error!'); }
-}
-
-// Get user's pending withdrawals
-async function loadUserWithdrawals() {
-    if (!currentUserId) return;
-    try {
-        const res = await fetch(`/api/user/withdrawals/${currentUserId}`);
-        const data = await res.json();
-        displayUserWithdrawals(data.withdrawals || []);
-    } catch(e) { console.error('Failed to load withdrawals:', e); }
-}
-
-function displayUserWithdrawals(withdrawals) {
-    const walletHistory = document.getElementById('wallet-history-list');
-    if (!walletHistory) return;
-    
-    const pending = withdrawals.filter(w => w.status === 'pending');
-    const processed = withdrawals.filter(w => w.status !== 'pending');
-    
-    let html = '';
-    
-    if (pending.length > 0) {
-        html += '<div class="pending-withdrawals">';
-        html += '<h4 style="color: #ffa500; margin-bottom: 10px;">⏳ የሚጠበቀው</h4>';
-        pending.forEach(w => {
-            html += `<div style="background: rgba(255,165,0,0.1); padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 3px solid #ffa500;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>💸 ${w.amount} ብር</strong>
-                    <span style="font-size: 0.9em; color: #aaa;">${new Date(w.created_at).toLocaleDateString('am-ET')}</span>
-                </div>
-                <div style="font-size: 0.85em; color: #ccc; margin-top: 5px;">📱 ${w.phone_number}</div>
-            </div>`;
-        });
-        html += '</div>';
-    }
-    
-    if (processed.length > 0) {
-        html += '<div style="margin-top: 15px;">';
-        html += '<h4 style="margin-bottom: 10px;">አስተሳሰብ</h4>';
-        processed.forEach(w => {
-            const isApproved = w.status === 'approved';
-            html += `<div style="background: rgba(${isApproved ? '0,255,0,0.1' : '255,0,0,0.1'}); padding: 10px; margin: 5px 0; border-radius: 5px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <strong>${isApproved ? '✅' : '❌'} ${w.amount} ብር</strong>
-                    <span style="font-size: 0.9em; color: #aaa;">${new Date(w.created_at).toLocaleDateString('am-ET')}</span>
-                </div>
-            </div>`;
-        });
-        html += '</div>';
-    }
-    
-    if (withdrawals.length === 0) {
-        html = '<div class="history-empty">ምንም ማውጣት የለም</div>';
-    }
-    
-    walletHistory.innerHTML = html;
-}
-
-function setupAdminTabs() {
-    document.querySelectorAll('.admin-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById(`admin-${this.dataset.tab}-content`).classList.add('active');
-        });
-    });
-    
-    const refreshBtn = document.getElementById('admin-refresh-btn');
-    if(refreshBtn) refreshBtn.addEventListener('click', loadAdminData);
-}
-
-async function checkAdminStatus() {
-    if (!currentUserId) return;
-    
-    try {
-        const response = await fetch(`/api/check-admin/${currentUserId}`);
-        const data = await response.json();
-        
-        if (data.isAdmin) {
-            const adminTab = document.querySelector('[data-target="admin"]');
-            if (adminTab) {
-                adminTab.style.display = 'block';
-            }
-            // Load admin data if tab is shown
-            loadAdminData();
-        }
-    } catch (error) {
-        console.log('Admin check skipped');
-    }
-}
-
-function updateWalletDisplay(balance) {
-    const formattedBalance = parseFloat(balance || 0).toFixed(2);
-    
-    // Update main wallet display in selection screen header
-    const walletElement = document.getElementById('main-wallet-value');
-    if (walletElement) {
-        walletElement.textContent = formattedBalance;
-    }
-    
-    // Update wallet screen balance
-    const walletBalanceElement = document.getElementById('wallet-balance');
-    if (walletBalanceElement) {
-        walletBalanceElement.textContent = formattedBalance;
-    }
-    
-    // Update profile balance
-    const profileBalanceElement = document.getElementById('profile-balance');
-    if (profileBalanceElement) {
-        profileBalanceElement.textContent = formattedBalance + ' ETB';
-    }
-}
-
-function initializeWebSocket() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    
-    ws = new WebSocket(wsUrl);
-    
-    ws.onopen = function() {
-        console.log('WebSocket connected, sending stake:', currentStake);
-        ws.send(JSON.stringify({ type: 'set_stake', stake: currentStake }));
-        setTimeout(() => {
-            if (currentUserId && currentUserId !== 999999) {
-                ws.send(JSON.stringify({
-                    type: 'auth_telegram',
-                    telegramId: currentUserId.toString(),
-                    username: 'Player_' + currentUserId
-                }));
-            }
-        }, 100);
-    };
-    
-    ws.onmessage = function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            handleWebSocketMessage(data);
-        } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-        }
-    };
-    
-    ws.onclose = function() {
-        console.log('WebSocket disconnected');
-        setTimeout(initializeWebSocket, 3000);
-    };
-    
-    ws.onerror = function(error) {
-        console.error('WebSocket error:', error);
-    };
-}
-
-function handleWebSocketMessage(data) {
-    switch (data.type) {
-        case 'init':
-            console.log('Game initialized:', data);
-            updateTimerDisplay(data.timeLeft);
-            updatePhaseDisplay(data.phase);
-            renderMasterGrid();
-            // Load already-selected cards from server
-            if (data.selectedCards && data.selectedCards.length > 0) {
-                data.selectedCards.forEach(cardId => {
-                    if (!takenCards.has(cardId)) {
-                        takenCards.add(cardId);
-                    }
-                });
-                // Re-render grid to show selected cards as RED
-                generateCardSelection();
-            }
-            if (data.calledNumbers && data.calledNumbers.length > 0) {
-                data.calledNumbers.forEach(num => {
-                    markCalledNumber(num);
-                    markMasterNumber(num);
-                });
-            }
-            break;
-        case 'clear_local_selection':
-            selectedCardId = null;
-            previewCardId = null;
-            takenCards.clear();
-            
-            // Clear marked cells on the player's current card if any
-            const markedCells = document.querySelectorAll('.player-card-cell.marked');
-            markedCells.forEach(cell => cell.classList.remove('marked'));
-            
-            // Update UI to selection state
-            const landingScreen = document.getElementById('landing-screen');
-            const selectionScreen = document.getElementById('selection-screen');
-            const gameScreen = document.getElementById('game-screen');
-            
-            if (landingScreen) landingScreen.style.display = 'none';
-            if (selectionScreen) selectionScreen.style.display = 'flex';
-            if (gameScreen) gameScreen.style.display = 'none';
-            
-            generateCardSelection();
-            break;
-        case 'auth_success':
-            console.log('Authentication successful:', data.user);
-            if (data.user && data.user.balance !== undefined) {
-                updateWalletDisplay(data.user.balance);
-            }
-            break;
-        case 'balance_update':
-            updateWalletDisplay(data.balance);
-            break;
-        case 'card_confirmed':
-            updateWalletDisplay(data.balance);
-            renderMasterGrid();
-            break;
-        case 'phase_change':
-            console.log('Phase changed:', data.phase);
-            updatePhaseDisplay(data.phase);
-            if (data.playerCount !== undefined) {
-                updatePlayerCountDisplay(data.playerCount);
-            }
-            if (data.prizeAmount !== undefined) {
-                updatePrizePoolDisplay(data.prizeAmount);
-            }
-            
-            // Reset status message in selection screen
-            const status = document.getElementById('confirmation-status');
-            if (status && data.phase === 'selection') {
-                status.textContent = 'ካርድ ይምረጡና አረጋግጡ';
-                status.style.display = 'none';
-                status.style.color = 'rgba(255, 255, 255, 0.7)';
-            }
-            
-            handlePhaseChange(data);
-            break;
-        case 'number_called':
-            console.log('Number called:', data.letter + data.number);
-            displayCalledNumber(data.letter, data.number);
-            markCalledNumber(data.number);
-            markMasterNumber(data.number);
-            break;
-        case 'timer_update':
-            updateTimerDisplay(data.timeLeft);
-            updatePhaseDisplay(data.phase);
-            if (data.playerCount !== undefined) {
-                updatePlayerCountDisplay(data.playerCount);
-            }
-            if (data.prizeAmount !== undefined) {
-                updatePrizePoolDisplay(data.prizeAmount);
-            }
-            break;
-        case 'card_selected':
-            // Mark card as taken - show in RED for real-time visibility
-            if (data.cardId && !takenCards.has(data.cardId)) {
-                takenCards.add(data.cardId);
-                // Update the card button visual state
-                const cardBtn = document.querySelector(`[data-card-id="${data.cardId}"]`);
-                if (cardBtn) {
-                    cardBtn.classList.add('taken');
-                    cardBtn.style.backgroundColor = '#ff4757';
-                    cardBtn.style.color = '#ffffff';
-                    cardBtn.style.fontWeight = 'bold';
-                    cardBtn.style.opacity = '1';
-                    cardBtn.style.cursor = 'not-allowed';
-                    cardBtn.onclick = () => alert('ይህ ካርድ ቀድሞ ተወስዷል');
-                }
-            }
-            break;
-        case 'error':
-            if (data.error && data.error.includes('ጨዋታ አስቀድሞ')) {
-                alert('❌ ' + data.error);
-                // Show landing screen if game is in progress
-                const landingScreen = document.getElementById('landing-screen');
-                if (landingScreen) {
-                    landingScreen.style.display = 'flex';
-                }
-            } else {
-                alert(data.error || 'ችግር ተፈጥሯል');
-            }
-            break;
-        case 'bingo_rejected':
-            alert(data.error || 'ቢንጎ ትክክል አይደለም');
-            break;
-        default:
-            console.log('Unknown message type:', data.type);
-    }
-}
-
-let calledNumbersSet = new Set();
-
-function handlePhaseChange(data) {
-    const gameScreen = document.getElementById('game-screen');
-    const selectionScreen = document.getElementById('selection-screen');
-    const landingScreen = document.getElementById('landing-screen');
-    
-    if (data.phase === 'selection') {
-        // Clear previous game data
-        clearCallHistory();
-        clearMasterGrid();
-        calledNumbersSet.clear();
-        selectedCardId = null;
-        
-        // Clear player card marks
-        const playerCells = document.querySelectorAll('.player-card-cell');
-        playerCells.forEach(cell => cell.classList.remove('called', 'marked'));
-        
-        // If on game screen, go back to selection
-        if (gameScreen && gameScreen.style.display === 'flex') {
-            gameScreen.style.display = 'none';
-            if (selectionScreen) {
-                selectionScreen.style.display = 'flex';
-            }
-        }
-        
-        // Always regenerate cards in selection screen
-        if (selectionScreen) {
-            generateCardSelection();
-        }
-        
-        // Reset confirm button
-        const confirmBtn = document.getElementById('confirm-card-btn');
-        if (confirmBtn) confirmBtn.disabled = true;
-    } else if (data.phase === 'game') {
-        // Game is starting
-        const selectionScreen = document.getElementById('selection-screen');
-        const gameScreen = document.getElementById('game-screen');
-        
-        if (selectionScreen) selectionScreen.style.display = 'none';
-        if (gameScreen) {
-            gameScreen.style.display = 'flex';
-            renderMasterGrid();
-            if (selectedCardId) {
-                renderPlayerCard(selectedCardId);
-            }
-        }
-    } else if (data.phase === 'winner') {
-        if (data.winner) {
-            showWinnerDisplay(data.winner);
-        }
-    }
-}
-
-function showWinnerDisplay(winner) {
-    const message = `🎉 አሸናፊ: ${winner.username}\nካርድ: #${winner.cardId}${winner.prize ? '\nሽልማት: ' + winner.prize + ' ብር' : ''}`;
-    alert(message);
-}
-
-function renderMasterGrid() {
-    const masterGrid = document.getElementById('master-grid');
-    if (!masterGrid) return;
-    
-    masterGrid.innerHTML = '';
-    
-    // Create 5 columns x 15 rows (75 numbers)
-    for (let row = 0; row < 15; row++) {
-        for (let col = 0; col < 5; col++) {
-            const num = col * 15 + row + 1;
-            const cell = document.createElement('div');
-            cell.className = 'master-cell';
-            cell.dataset.number = num;
-            cell.textContent = num;
-            masterGrid.appendChild(cell);
-        }
-    }
-}
-
-function markMasterNumber(number) {
-    const masterGrid = document.getElementById('master-grid');
-    if (!masterGrid) return;
-    
-    const cells = masterGrid.querySelectorAll('.master-cell');
-    cells.forEach(cell => {
-        if (parseInt(cell.dataset.number) === number) {
-            cell.classList.add('called');
-        }
-    });
-}
-
-function clearMasterGrid() {
-    const masterGrid = document.getElementById('master-grid');
-    if (!masterGrid) return;
-    
-    const cells = masterGrid.querySelectorAll('.master-cell');
-    cells.forEach(cell => cell.classList.remove('called'));
-}
-
-function clearCallHistory() {
-    const historyElement = document.getElementById('call-history');
-    if (historyElement) {
-        historyElement.innerHTML = '';
-    }
-    
-    const letterElement = document.getElementById('call-letter');
-    const numberElement = document.getElementById('call-number');
-    if (letterElement) letterElement.textContent = '';
-    if (numberElement) numberElement.textContent = '--';
-}
-
-function updateTimerDisplay(timeLeft) {
-    const timerElement = document.getElementById('time-left');
-    if (timerElement) {
-        timerElement.textContent = timeLeft + 's';
-    }
-}
-
-function updatePhaseDisplay(phase) {
-    const phaseElement = document.getElementById('game-phase');
-    if (phaseElement) {
-        if (phase === 'selection') {
-            phaseElement.textContent = 'ካርድ ይምረጡ';
-        } else if (phase === 'game') {
-            phaseElement.textContent = 'ጨዋታ በሂደት ላይ';
-        } else if (phase === 'winner') {
-            phaseElement.textContent = 'አሸናፊ!';
-        }
-    }
-}
-
-function updatePlayerCountDisplay(playerCount) {
-    const playerCountElement = document.getElementById('player-count');
-    if (playerCountElement) {
-        playerCountElement.textContent = playerCount;
-    }
-}
-
-function updatePrizePoolDisplay(prizeAmount) {
-    const prizePoolElement = document.getElementById('prize-pool');
-    if (prizePoolElement) {
-        prizePoolElement.textContent = Math.round(prizeAmount) + ' ብር';
-    }
-}
-
-function displayCalledNumber(letter, number) {
-    const letterElement = document.getElementById('call-letter');
-    const numberElement = document.getElementById('call-number');
-    
-    if (letterElement) {
-        letterElement.textContent = letter;
-    }
-    if (numberElement) {
-        numberElement.textContent = number;
-    }
-    
-    const callCircle = document.getElementById('current-call');
-    if (callCircle) {
-        callCircle.classList.add('new-call');
-        setTimeout(() => callCircle.classList.remove('new-call'), 500);
-    }
-    
-    // Add to call history (limit to 3)
-    const historyElement = document.getElementById('call-history');
-    if (historyElement) {
-        const callItem = document.createElement('span');
-        callItem.className = 'history-call';
-        callItem.textContent = letter + number;
-        historyElement.insertBefore(callItem, historyElement.firstChild);
-        
-        // Keep only last 3 calls
-        while (historyElement.children.length > 3) {
-            historyElement.removeChild(historyElement.lastChild);
-        }
-    }
-}
-
-function markCalledNumber(number) {
-    calledNumbersSet.add(number);
-    
-    const cells = document.querySelectorAll('.player-card-cell');
-    cells.forEach(cell => {
-        if (parseInt(cell.dataset.number) === number) {
-            cell.classList.add('called');
-        }
-    });
-}
-
-async function handleCardConfirmation(cardId) {
-    if (!currentUserId) {
-        console.error('User not initialized');
-        return { success: false, message: 'እባክዎ መጀመሪያ ከቴሌግራም ቦት ይመዝገቡ' };
-    }
-    
-    try {
-        const response = await fetch('/api/bet', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                userId: currentUserId,
-                stakeAmount: currentStake
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            updateWalletDisplay(result.balance);
-            
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    type: 'confirm_card',
-                    cardId: cardId
-                }));
-            }
-        }
-        
-        return result;
-    } catch (error) {
-        console.error('Error placing bet:', error);
-        return { success: false, message: 'Bet failed' };
-    }
-}
-
-function refreshBalance() {
-    loadWallet();
+    return param;
 }
 
 // Bingo button functionality
@@ -1567,44 +517,484 @@ function initializeBingoButton() {
             if (landingScreen) landingScreen.style.display = 'flex';
         });
     }
+}
+
+let selectedCardId = null;
+let markedNumbers = new Set();
+let takenCards = new Set();
+
+function initializeWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
     
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            refreshBalance();
+    ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (event) => {
+        handleGameMessage(JSON.parse(event.data));
+    };
+    
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+    
+    ws.onclose = () => {
+        console.log('WebSocket closed, reconnecting...');
+        setTimeout(initializeWebSocket, 3000);
+    };
+}
+
+function initializeLandingScreen() {
+    const playBtn = document.getElementById('start-selection-btn');
+    if (playBtn) {
+        playBtn.addEventListener('click', joinGame);
+    }
+}
+
+async function joinGame() {
+    if (!currentUserId) {
+        alert('User ID not found');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/games/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                stake: currentStake
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            selectedCardId = null;
+            markedNumbers.clear();
+            const selectionScreen = document.getElementById('selection-screen');
+            const landingScreen = document.getElementById('landing-screen');
+            if (selectionScreen) selectionScreen.style.display = 'flex';
+            if (landingScreen) landingScreen.style.display = 'none';
+            generateCardSelection();
+        } else {
+            alert(data.message || 'Failed to join game');
+        }
+    } catch (error) {
+        console.error('Error joining game:', error);
+        alert('Error joining game');
+    }
+}
+
+function generateCardSelection() {
+    const container = document.getElementById('card-selection-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    for (let i = 1; i <= 6; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'card-btn';
+        btn.textContent = `ካርድ ${i}`;
+        btn.data = { cardId: i };
+        btn.onclick = () => selectCard(i);
+        container.appendChild(btn);
+    }
+}
+
+function selectCard(cardId) {
+    selectedCardId = cardId;
+    const confirmBtn = document.getElementById('confirm-card-btn');
+    if (confirmBtn) confirmBtn.disabled = false;
+}
+
+async function confirmCard() {
+    if (!selectedCardId || !currentUserId) return;
+    
+    try {
+        const response = await fetch(`/api/games/confirm-card`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                cardId: selectedCardId
+            })
+        });
+        
+        const data = await response.json();
+        if (!data.success) {
+            alert(data.message || 'Failed to confirm card');
+        }
+    } catch (error) {
+        console.error('Error confirming card:', error);
+    }
+}
+
+function handleGameMessage(data) {
+    switch(data.type) {
+        case 'game_state':
+            if (data.phase === 'selection') {
+                const selectionScreen = document.getElementById('selection-screen');
+                if (selectionScreen) selectionScreen.style.display = 'flex';
+            }
+            break;
+        case 'number_called':
+            console.log('Number called:', data.letter + data.number);
+            displayCalledNumber(data.letter, data.number);
+            markCalledNumber(data.number);
+            markMasterNumber(data.number);
+            break;
+        case 'timer_update':
+            updateTimerDisplay(data.timeLeft);
+            updatePhaseDisplay(data.phase);
+            if (data.playerCount !== undefined) {
+                updatePlayerCountDisplay(data.playerCount);
+            }
+            if (data.prizeAmount !== undefined) {
+                updatePrizePoolDisplay(data.prizeAmount);
+            }
+            break;
+        case 'card_selected':
+            // Mark card as taken
+            if (data.cardId && !takenCards.has(data.cardId)) {
+                takenCards.add(data.cardId);
+                const cardBtn = document.querySelector(`[data-card-id="${data.cardId}"]`);
+                if (cardBtn) {
+                    cardBtn.classList.add('taken');
+                    cardBtn.style.backgroundColor = '#ff4757';
+                }
+            }
+            break;
+        case 'error':
+            alert(data.error || 'ችግር ተፈጥሯል');
+            break;
+        case 'bingo_rejected':
+            alert(data.error || 'ቢንጎ ትክክል አይደለም');
+            break;
+    }
+}
+
+function displayCalledNumber(letter, number) {
+    const callHistoryEl = document.getElementById('call-history');
+    if (callHistoryEl) {
+        const item = document.createElement('div');
+        item.className = 'call-history-item';
+        item.textContent = `${letter}${number}`;
+        callHistoryEl.appendChild(item);
+    }
+}
+
+function markCalledNumber(number) {
+    markedNumbers.add(number);
+    const playerCells = document.querySelectorAll('.player-card-cell');
+    playerCells.forEach(cell => {
+        if (cell.textContent.includes(number)) {
+            cell.classList.add('called');
+            cell.classList.add('marked');
+        }
+    });
+}
+
+function markMasterNumber(number) {
+    const masterCells = document.querySelectorAll('.master-grid-cell');
+    masterCells.forEach(cell => {
+        if (parseInt(cell.textContent) === number) {
+            cell.classList.add('called');
+        }
+    });
+}
+
+function updateTimerDisplay(timeLeft) {
+    const timerEl = document.getElementById('time-left');
+    if (timerEl) {
+        timerEl.textContent = `${timeLeft}s`;
+    }
+}
+
+function updatePhaseDisplay(phase) {
+    const phaseEl = document.getElementById('current-phase');
+    if (phaseEl) {
+        const phaseText = {
+            'selection': 'ካርድ መምረጫ',
+            'game': 'ጨዋታ በሂደት ላይ',
+            'winner': 'ዝግጅት'
+        };
+        phaseEl.textContent = phaseText[phase] || phase;
+    }
+}
+
+function updatePlayerCountDisplay(count) {
+    const playerCountEl = document.getElementById('player-count');
+    if (playerCountEl) {
+        playerCountEl.textContent = count;
+    }
+}
+
+function updatePrizePoolDisplay(amount) {
+    const prizePoolEl = document.getElementById('prize-pool');
+    if (prizePoolEl) {
+        prizePoolEl.textContent = `${amount} ብር`;
+    }
+}
+
+function clearCallHistory() {
+    const callHistoryEl = document.getElementById('call-history');
+    if (callHistoryEl) {
+        callHistoryEl.innerHTML = '';
+    }
+}
+
+function clearMasterGrid() {
+    const masterGridEl = document.getElementById('master-grid');
+    if (masterGridEl) {
+        masterGridEl.innerHTML = '';
+    }
+}
+
+function renderMasterGrid() {
+    const masterGrid = document.getElementById('master-grid');
+    if (!masterGrid) return;
+    
+    masterGrid.innerHTML = '';
+    const letters = ['B', 'I', 'N', 'G', 'O'];
+    for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'master-grid-cell';
+        cell.textContent = Math.floor(Math.random() * 75) + 1;
+        masterGrid.appendChild(cell);
+    }
+}
+
+function renderPlayerCard(cardId) {
+    const playerCard = document.getElementById('player-card');
+    if (!playerCard) return;
+    
+    playerCard.innerHTML = '';
+    for (let i = 0; i < 25; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'player-card-cell';
+        cell.textContent = Math.floor(Math.random() * 75) + 1;
+        playerCard.appendChild(cell);
+    }
+}
+
+async function claimBingo() {
+    if (!currentUserId || !selectedCardId) {
+        alert('Invalid game state');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/games/claim-bingo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                cardId: selectedCardId
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('🎉 ቢንጎ! ሽልማት አገኛሉ');
+        } else {
+            alert(data.message || 'ቢንጎ ይህ በአሁኑ ጊዜ ልክ ነው');
+        }
+    } catch (error) {
+        console.error('Error claiming bingo:', error);
+    }
+}
+
+let cachedWalletData = null;
+
+async function loadWallet() {
+    if (!currentUserId) {
+        console.log('No user ID for wallet');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            cachedWalletData = data.wallet;
+            updateWalletUI();
+        }
+    } catch (error) {
+        console.error('Error loading wallet:', error);
+    }
+}
+
+function updateWalletUI() {
+    if (!cachedWalletData) return;
+    
+    const mainWalletEl = document.getElementById('main-wallet-value');
+    if (mainWalletEl) {
+        mainWalletEl.textContent = `${parseFloat(cachedWalletData.balance).toFixed(2)} ETB`;
+    }
+}
+
+function initializeWallet() {
+    const depositBtn = document.getElementById('deposit-btn');
+    if (depositBtn) {
+        depositBtn.addEventListener('click', () => {
+            const amount = prompt('ሚንት መጠን (ብር):');
+            if (amount && !isNaN(amount)) {
+                processDeposit(parseFloat(amount));
+            }
         });
     }
 }
 
-function claimBingo() {
-    if (!selectedCardId) {
-        alert('ካርድ አልመረጡም');
+async function processDeposit(amount) {
+    if (!currentUserId) {
+        alert('User not logged in');
         return;
     }
     
-    const isValid = checkBingo(selectedCardId);
-    
-    if (isValid) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'claim_bingo',
-                cardId: selectedCardId,
-                isValid: true
-            }));
+    try {
+        const response = await fetch(`/api/deposits`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUserId,
+                amount: amount
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('✅ ሚዲ ሰሌዳ ውል ላይ ተቀበለ');
+            loadWallet();
+        } else {
+            alert(data.message || 'ሚንት ይህ በአሁኑ ጊዜ ሊሰር ወደ ሙከራ');
         }
-    } else {
-        alert('ቢንጎ የለዎትም። ሙሉ መስመር ይፈልጉ።');
+    } catch (error) {
+        console.error('Error processing deposit:', error);
     }
 }
 
-function checkBingo(cardId) {
-    // Assuming BINGO_CARDS is defined globally (e.g., in card.js)
-    const cardData = BINGO_CARDS[cardId];
-    if (!cardData) return false;
+async function loadWalletData() {
+    await loadWallet();
     
-    // Only use server-called numbers (not manually marked cells)
-    const markedNumbers = calledNumbersSet;
+    if (!currentUserId) return;
     
+    try {
+        const response = await fetch(`/api/wallet/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.success && data.wallet) {
+            cachedWalletData = data.wallet;
+            updateWalletUI();
+            
+            const transactionsContainer = document.getElementById('transactions-container');
+            if (transactionsContainer && data.transactions) {
+                transactionsContainer.innerHTML = data.transactions.map(tx => `
+                    <div class="transaction-item">
+                        <span>${tx.type}</span>
+                        <span>${tx.amount} ETB</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading wallet data:', error);
+    }
+}
+
+async function checkAdminStatus() {
+    if (!currentUserId) return;
+    
+    try {
+        const response = await fetch(`/api/admin/check/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.isAdmin) {
+            const adminFooterBtn = document.querySelector('[data-target="admin"]');
+            if (adminFooterBtn) {
+                adminFooterBtn.style.display = 'block';
+            }
+        }
+    } catch (error) {
+        console.error('Error checking admin status:', error);
+    }
+}
+
+async function loadAdminData() {
+    if (!currentUserId) return;
+    
+    try {
+        const depositsResponse = await fetch(`/api/admin/deposits`);
+        const depositsData = await depositsResponse.json();
+        
+        const depositsContainer = document.getElementById('admin-deposits-container');
+        if (depositsContainer && depositsData.deposits) {
+            depositsContainer.innerHTML = depositsData.deposits.map(deposit => `
+                <div class="admin-item">
+                    <span>User ${deposit.userId}: ${deposit.amount} ETB</span>
+                    <button onclick="approveDeposit(${deposit.id})">✓ Approve</button>
+                    <button onclick="rejectDeposit(${deposit.id})">✗ Reject</button>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading admin data:', error);
+    }
+}
+
+async function approveDeposit(depositId) {
+    try {
+        const response = await fetch(`/api/admin/deposits/${depositId}/approve`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            alert('✓ Deposit approved');
+            loadAdminData();
+        }
+    } catch (error) {
+        console.error('Error approving deposit:', error);
+    }
+}
+
+async function rejectDeposit(depositId) {
+    try {
+        const response = await fetch(`/api/admin/deposits/${depositId}/reject`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            alert('✗ Deposit rejected');
+            loadAdminData();
+        }
+    } catch (error) {
+        console.error('Error rejecting deposit:', error);
+    }
+}
+
+async function approveWithdrawal(withdrawalId) {
+    try {
+        const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/approve`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            alert('✓ Withdrawal approved');
+            loadAdminData();
+        }
+    } catch (error) {
+        console.error('Error approving withdrawal:', error);
+    }
+}
+
+async function rejectWithdrawal(withdrawalId) {
+    try {
+        const response = await fetch(`/api/admin/withdrawals/${withdrawalId}/reject`, { method: 'POST' });
+        const data = await response.json();
+        if (data.success) {
+            alert('✗ Withdrawal rejected');
+            loadAdminData();
+        }
+    } catch (error) {
+        console.error('Error rejecting withdrawal:', error);
+    }
+}
+
+function isBingo(cardData, markedNumbers) {
     // Check rows
     for (let row = 0; row < 5; row++) {
         let rowComplete = true;
@@ -1618,7 +1008,7 @@ function checkBingo(cardId) {
         }
         if (rowComplete) return true;
     }
-    
+
     // Check columns
     for (let col = 0; col < 5; col++) {
         let colComplete = true;
