@@ -159,30 +159,41 @@ async function checkRegistrationAndProceed() {
     }
 
     if (!currentUserId) {
-        console.warn('No User ID available, using guest ID.');
-        currentUserId = Math.floor(Math.random() * 1000000) + 1000000; // Generate a random guest ID
+        showRegistrationRequired();
+        return;
     }
     
-    // Auto-proceed to game instead of showing registration required
-    isRegistered = true; 
-    hideRegistrationRequired();
-    loadWallet();
-    initializeWebSocket();
-    initializeLandingScreen();
-    initializeFooterNavigation();
-    checkAdminStatus();
-    
-    // Handle hash-based navigation (from Telegram bot buttons)
-    setTimeout(() => {
-        const hash = window.location.hash.substring(1);
-        if (hash === 'wallet') {
-            const walletBtn = document.querySelector('[data-target="wallet"]');
-            if (walletBtn) walletBtn.click();
-        } else if (hash === 'profile') {
-            const profileBtn = document.querySelector('[data-target="profile"]');
-            if (profileBtn) profileBtn.click();
+    try {
+        const response = await fetch(`/api/check-registration/${currentUserId}`);
+        const data = await response.json();
+        
+        if (data.registered) {
+            isRegistered = true;
+            hideRegistrationRequired();
+            loadWallet();
+            initializeWebSocket();
+            initializeLandingScreen();
+            initializeFooterNavigation();
+            checkAdminStatus();
+            
+            // Handle hash-based navigation (from Telegram bot buttons)
+            setTimeout(() => {
+                const hash = window.location.hash.substring(1);
+                if (hash === 'wallet') {
+                    const walletBtn = document.querySelector('[data-target="wallet"]');
+                    if (walletBtn) walletBtn.click();
+                } else if (hash === 'profile') {
+                    const profileBtn = document.querySelector('[data-target="profile"]');
+                    if (profileBtn) profileBtn.click();
+                }
+            }, 500);
+        } else {
+            showRegistrationRequired();
         }
-    }, 500);
+    } catch (error) {
+        console.error('Error checking registration:', error);
+        showRegistrationRequired();
+    }
 }
 
 function showRegistrationRequired() {
