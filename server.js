@@ -2098,6 +2098,16 @@ app.get('/admin', (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Fallback for user-specific paths to support web access
+app.get('/user/:id', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Root path to ensure it always serves the main page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password } = req.body;

@@ -159,7 +159,8 @@ async function checkRegistrationAndProceed() {
     }
 
     if (!currentUserId) {
-        console.warn('No User ID available, but proceeding as guest.');
+        console.warn('No User ID available, using guest ID.');
+        currentUserId = Math.floor(Math.random() * 1000000) + 1000000; // Generate a random guest ID
     }
     
     // Auto-proceed to game instead of showing registration required
