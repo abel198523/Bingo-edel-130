@@ -177,7 +177,7 @@ async function awardReferralBonus(referrerId, referredUserId) {
         console.log(`Referral bonus of ${REFERRAL_BONUS} ETB awarded to user ${referrerId}`);
         return true;
     } catch (err) {
-        console.error('Error awarding referral bonus:', err);
+        console.error('Error awarding referral bonus:', err.message || err);
         return false;
     }
 }
@@ -247,7 +247,7 @@ async function checkWithdrawEligibility(telegramId) {
         
         return { eligible: true, depositCount, userId };
     } catch (error) {
-        console.error('Eligibility check error:', error);
+        console.error('Eligibility check error:', error.message || error);
         return { eligible: false, reason: 'error', message: 'ስህተት ተከስቷል' };
     }
 }
@@ -276,7 +276,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
         const result = await pool.query('SELECT * FROM users WHERE telegram_id = $1', [telegramId]);
         isRegistered = result.rows.length > 0;
     } catch (err) {
-        console.error('Error checking user:', err);
+        console.error('Error checking user:', err.message || err);
     }
     
     const miniAppUrlWithId = MINI_APP_URL ? `${MINI_APP_URL}/user/${telegramId}` : null;
@@ -385,7 +385,7 @@ bot.on('contact', async (msg) => {
         });
         
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('Registration error:', error.message || error);
         bot.sendMessage(chatId, "ይቅርታ፣ በመመዝገብ ላይ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።");
     }
 });
@@ -408,7 +408,7 @@ bot.onText(/💰 Check Balance/, async (msg) => {
             bot.sendMessage(chatId, "እባክዎ መጀመሪያ ይመዝገቡ። /start ይላኩ።");
         }
     } catch (error) {
-        console.error('Balance check error:', error);
+        console.error('Balance check error:', error.message || error);
         bot.sendMessage(chatId, "ይቅርታ፣ ሒሳብዎን ማግኘት አልተቻለም።");
     }
 });
@@ -446,7 +446,7 @@ bot.onText(/🔗 ሪፈራል/, async (msg) => {
             await bot.sendMessage(chatId, "እባክዎ መጀመሪያ ይመዝገቡ። /start ይላኩ።");
         }
     } catch (error) {
-        console.error('Referral link error:', error);
+        console.error('Referral link error:', error.message || error);
         await bot.sendMessage(chatId, "ይቅርታ፣ ሪፈራል ሊንክ ማግኘት አልተቻለም።");
     }
 });
@@ -536,7 +536,7 @@ bot.onText(/\/setadmin\s+(\d+)/, async (msg, match) => {
         await bot.sendMessage(chatId, `✅ ተጠቃሚ ${telegramId} እንደ አስተዳዳሪ ተወስኗል!`);
         console.log(`Admin set: ${telegramId} by ${adminChatId}`);
     } catch (error) {
-        console.error('Error setting admin:', error);
+        console.error('Error setting admin:', error.message || error);
         await bot.sendMessage(chatId, "❌ አስተዳዳሪን ማዘጋጀት ላይ ችግር ተፈጥሯል।");
     }
 });
@@ -556,7 +556,7 @@ bot.onText(/\/broadcast/, async (msg) => {
         userStates.set(adminChatId, { action: 'broadcast', step: 'message' });
         await bot.sendMessage(chatId, '📢 ብሮድካስት መልክት ይጻፉ:', { reply_markup: { keyboard: [[{ text: "❌ ሰርዝ" }]], resize_keyboard: true } });
     } catch (error) {
-        console.error('Broadcast error:', error);
+        console.error('Broadcast error:', error.message || error);
     }
 });
 
@@ -575,7 +575,7 @@ bot.onText(/\/promo/, async (msg) => {
         userStates.set(adminChatId, { action: 'promo', step: 'code' });
         await bot.sendMessage(chatId, '🎁 ፕሮሞ ኮድ ይጻፉ (ለምሳሌ: SUMMER2025):', { reply_markup: { keyboard: [[{ text: "❌ ሰርዝ" }]], resize_keyboard: true } });
     } catch (error) {
-        console.error('Promo command error:', error);
+        console.error('Promo command error:', error.message || error);
     }
 });
 
@@ -688,7 +688,7 @@ bot.on('message', async (msg) => {
                     }
                 );
             } catch (error) {
-                console.error('Promo creation error:', error);
+                console.error('Promo creation error:', error.message || error);
                 userStates.delete(telegramId);
                 await bot.sendMessage(chatId, '❌ ፕሮሞ ኮድ ሲፈጠር ስህተት ተፈጥሯል።', { reply_markup: getMainKeyboard(telegramId) });
             }
@@ -761,7 +761,7 @@ bot.on('message', async (msg) => {
                     { reply_markup: getMainKeyboard(telegramId) }
                 );
             } catch (error) {
-                console.error('Withdrawal request error:', error);
+                console.error('Withdrawal request error:', error.message || error);
                 await bot.sendMessage(chatId, 'ይቅርታ፣ ስህተት ተፈጥሯል።');
             }
         }
@@ -823,7 +823,7 @@ bot.on('message', async (msg) => {
                     { reply_markup: getMainKeyboard(telegramId) }
                 );
             } catch (error) {
-                console.error('Deposit request error:', error);
+                console.error('Deposit request error:', error.message || error);
                 await bot.sendMessage(chatId, 'ይቅርታ፣ ስህተት ተፈጥሯል።');
             }
         }
@@ -845,7 +845,7 @@ bot.onText(/\/setadmin/, async (msg) => {
             `✅ እርስዎ አድሚን ሆነዋል!\n\nChat ID: ${chatId}\n\nይህን Chat ID ወደ ADMIN_CHAT_ID environment variable ያስገቡ።`
         );
     } catch (error) {
-        console.error('Set admin error:', error);
+        console.error('Set admin error:', error.message || error);
     }
 });
 
@@ -908,7 +908,7 @@ bot.onText(/\/pending/, async (msg) => {
         
         await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
     } catch (error) {
-        console.error('Pending check error:', error);
+        console.error('Pending check error:', error.message || error);
         await bot.sendMessage(chatId, 'ስህተት ተፈጥሯል።');
     }
 });
@@ -973,7 +973,7 @@ bot.onText(/\/approve_deposit (\d+)/, async (msg, match) => {
             );
         }
     } catch (error) {
-        console.error('Approve deposit error:', error);
+        console.error('Approve deposit error:', error.message || error);
         await bot.sendMessage(chatId, 'ስህተት ተፈጥሯል።');
     }
 });
@@ -1017,7 +1017,7 @@ bot.onText(/\/reject_deposit (\d+)/, async (msg, match) => {
             );
         }
     } catch (error) {
-        console.error('Reject deposit error:', error);
+        console.error('Reject deposit error:', error.message || error);
         await bot.sendMessage(chatId, 'ስህተት ተፈጥሯል።');
     }
 });
@@ -1086,7 +1086,7 @@ bot.onText(/\/approve_withdraw (\d+)/, async (msg, match) => {
             );
         }
     } catch (error) {
-        console.error('Approve withdrawal error:', error);
+        console.error('Approve withdrawal error:', error.message || error);
         await bot.sendMessage(chatId, 'ስህተት ተፈጥሯል።');
     }
 });
@@ -1147,7 +1147,7 @@ bot.onText(/\/reject_withdraw (\d+)/, async (msg, match) => {
             );
         }
     } catch (error) {
-        console.error('Reject withdrawal error:', error);
+        console.error('Reject withdrawal error:', error.message || error);
         await bot.sendMessage(chatId, 'ስህተት ተፈጥሯል።');
     }
 });
@@ -1186,7 +1186,7 @@ bot.on('callback_query', async (query) => {
                 await bot.sendMessage(chatId, `✅ ብሮድካስት ተላክ! ${successCount}/${users.length} ተጠቃሚዎች`);
                 await bot.answerCallbackQuery(query.id);
             } catch (error) {
-                console.error('Broadcast send error:', error);
+                console.error('Broadcast send error:', error.message || error);
                 await bot.answerCallbackQuery(query.id, { text: '❌ ስህተት', show_alert: true });
             }
         }
@@ -2335,7 +2335,7 @@ app.get('/api/referral/stats/:telegramId', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Referral stats error:', err);
+        console.error('Referral stats error:', err.message || err);
         res.status(500).json({ success: false, message: 'Failed to get referral stats' });
     }
 });
@@ -2355,7 +2355,7 @@ app.get('/api/check-admin/:telegramId', async (req, res) => {
         
         return res.json({ isAdmin: isAdmin });
     } catch (err) {
-        console.error('Check admin error:', err);
+        console.error('Check admin error:', err.message || err);
         return res.json({ isAdmin: false });
     }
 });
